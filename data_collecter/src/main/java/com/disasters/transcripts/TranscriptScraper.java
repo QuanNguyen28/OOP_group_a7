@@ -48,7 +48,6 @@ import java.nio.file.StandardOpenOption; // For specifying 'APPEND' and 'CREATE'
 import java.time.Duration;       // For specifying time (e.g., Duration.ofSeconds(15))
 import java.util.ArrayList;      // A resizable list
 import java.util.List;           // The interface for lists
-import java.util.Arrays;
 import com.disasters.comments.CsvWriter;
 
 public class TranscriptScraper {
@@ -307,7 +306,8 @@ public class TranscriptScraper {
 
     private void appendResultToCsv(TranscriptResult result, String filePath) {
         // Call the CsvWriter class
-        List<String[]> dataRow = new ArrayList<>(Arrays.asList(result.getVideoUrl(), result.getTranscript()));
+        List<String[]> dataRow = new ArrayList<>();
+        dataRow.add(new String[]{result.getVideoUrl(), result.getTranscript()});
         CsvWriter.write(dataRow, this.CSV_HEADERS, filePath);
     }
 }
