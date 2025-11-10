@@ -18,7 +18,7 @@ public class GetTranscripts {
         // String myOutput = "D:\\HUST_Code_class\\OOP\\Project\\data\\csv_files\\new_transcripts.csv";
         // scraper.setConfiguration(myInput, myOutput);
 
-        // 3. Run the scraper's main logic
+        // Run the scraper's main logic
         scraper.execute();
     }
 }

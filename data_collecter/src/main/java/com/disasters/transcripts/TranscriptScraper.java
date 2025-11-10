@@ -48,6 +48,8 @@ import java.nio.file.StandardOpenOption; // For specifying 'APPEND' and 'CREATE'
 import java.time.Duration;       // For specifying time (e.g., Duration.ofSeconds(15))
 import java.util.ArrayList;      // A resizable list
 import java.util.List;           // The interface for lists
+import java.util.Arrays;
+import com.disasters.comments.CsvWriter;
 
 public class TranscriptScraper {
 
@@ -304,36 +306,8 @@ public class TranscriptScraper {
 // ********************************Write data to Csv specified by "filePath"****************************
 
     private void appendResultToCsv(TranscriptResult result, String filePath) {
-        // Check if the file is new (to write the header)
-        File file = new File(filePath);
-        boolean isNewFile = !file.exists() || file.length() == 0;
-
-        // Basic CSVFormat configuration (DO NOT setHeader here)
-        CSVFormat csvFormat = CSVFormat.DEFAULT.builder().build();
-
-        try (
-            // Open file in APPEND and CREATE mode
-            BufferedWriter writer = Files.newBufferedWriter(Paths.get(filePath), 
-                                    StandardCharsets.UTF_8, 
-                                    StandardOpenOption.APPEND, 
-                                    StandardOpenOption.CREATE);
-        ) {
-            // If it's a new file, write the BOM and the Header line
-            if (isNewFile) {
-                writer.write("\uFEFF"); // BOM
-                // Write header manually
-                writer.write(String.join(",", this.CSV_HEADERS));
-                writer.newLine(); // Add a new line
-            }
-
-            // Write new data
-            // Use a separate CSVPrinter just to write one record
-            try (CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat)) {
-                csvPrinter.printRecord(result.getVideoUrl(), result.getTranscript());
-            }
-
-        } catch (IOException e) {
-            log.error("Error appending to CSV file: {}", e.getMessage());
-        }
+        // Call the CsvWriter class
+        List<String[]> dataRow = new ArrayList<>(Arrays.asList(result.getVideoUrl(), result.getTranscript()));
+        CsvWriter.write(dataRow, this.CSV_HEADERS, filePath);
     }
 }
