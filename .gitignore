@@ -1,0 +1,11 @@
+# Gradle
+.gradle/
+build/
+**/build/
+out/
+# OS/IDE
+.DS_Store
+*.iml
+.idea/
+# Dist
+app-dist/

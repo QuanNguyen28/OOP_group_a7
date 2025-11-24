@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="app.controller.RunController">
+  <top>
+    <ToolBar>
+      <Label text="Yagi – Humanitarian Analytics (MVC)"/>
+      <Pane HBox.hgrow="ALWAYS"/>
+      <Label fx:id="envLabel" text="..." />
+      <Button fx:id="checkBtn" text="Check Env" onAction="#onCheckEnv"/>
+    </ToolBar>
+  </top>
+  <center>
+    <StackPane>
+      <Label text="Hello MVC 👋 — skeleton is running."/>
+    </StackPane>
+  </center>
+  <stylesheets>
+    <URL value="@../css/app.css"/>
+  </stylesheets>
+</BorderPane>
