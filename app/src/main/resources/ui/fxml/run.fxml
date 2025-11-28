@@ -11,11 +11,6 @@
     </ToolBar>
   </top>
   <center>
-    <StackPane>
-      <Label text="Hello MVC 👋 — skeleton is running."/>
-    </StackPane>
+    <StackPane><Label text="Hello MVC 👋 — skeleton is running."/></StackPane>
   </center>
-  <stylesheets>
-    <URL value="@../css/app.css"/>
-  </stylesheets>
 </BorderPane>

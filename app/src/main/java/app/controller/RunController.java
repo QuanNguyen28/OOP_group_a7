@@ -8,15 +8,9 @@ public class RunController {
   @FXML private Label envLabel;
   @FXML private Button checkBtn;
 
-  @FXML
-  public void initialize() {
-    envLabel.setText("Ready");
-  }
+  @FXML public void initialize() { envLabel.setText("Ready"); }
 
-  @FXML
-  public void onCheckEnv() {
-    String javaVersion = System.getProperty("java.version");
-    envLabel.setText("Java " + javaVersion + " ✓");
-    System.out.println("[BOOT] JavaFX started, env OK");
+  @FXML public void onCheckEnv() {
+    envLabel.setText("Java " + System.getProperty("java.version") + " ✓");
   }
 }

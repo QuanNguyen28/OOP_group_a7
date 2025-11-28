@@ -4,25 +4,23 @@ plugins {
 }
 
 java {
-  toolchain {
-    languageVersion.set(JavaLanguageVersion.of(21))
-  }
+  toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } // nếu bạn chỉ có 17, đổi 21 -> 17
 }
 
-application {
-  mainClass.set("app.MainApp")
-}
+application { mainClass.set("app.MainApp") }
 
 javafx {
   version = "21"
-  // Plugin JavaFX dùng tên module dạng dấu chấm (.) chứ không phải dấu gạch (-)
-  modules = listOf("javafx.controls", "javafx.fxml")
+  modules = listOf("javafx.controls", "javafx.fxml") // dùng dấu chấm, không phải dấu gạch
 }
 
 dependencies {
+  implementation("org.xerial:sqlite-jdbc:3.45.3.0")
+  implementation("com.fasterxml.jackson.core:jackson-databind:2.17.0")
+  implementation("com.fasterxml.jackson.core:jackson-annotations:2.17.0")
+  implementation("com.fasterxml.jackson.core:jackson-core:2.17.0")
+  implementation("com.typesafe:config:1.4.3")
   testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
 }
 
-tasks.test {
-  useJUnitPlatform()
-}
+tasks.test { useJUnitPlatform() }
