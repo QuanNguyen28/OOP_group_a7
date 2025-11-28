@@ -1,9 +1,5 @@
-plugins {
-  base
-}
+plugins { base }
 
 allprojects {
-  repositories {
-    mavenCentral()
-  }
+    repositories { mavenCentral() }
 }

@@ -1,16 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
-<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="app.controller.RunController">
-  <top>
-    <ToolBar>
-      <Label text="Yagi – Humanitarian Analytics (MVC)"/>
-      <Pane HBox.hgrow="ALWAYS"/>
-      <Label fx:id="envLabel" text="..." />
-      <Button fx:id="checkBtn" text="Check Env" onAction="#onCheckEnv"/>
-    </ToolBar>
-  </top>
-  <center>
-    <StackPane><Label text="Hello MVC 👋 — skeleton is running."/></StackPane>
-  </center>
+<?import javafx.scene.layout.*?>
+
+<!-- Đã thêm stylesheets="@run.css" vào đây -->
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="app.controller.RunController"
+            stylesheets="@run.css">
+
+    <top>
+        <ToolBar>
+            <Label text="Yagi – Humanitarian Analytics (MVC)"/>
+            <Separator orientation="VERTICAL"/>
+            <TextField fx:id="keywordsField"
+                       promptText="keywords: yagi, ragasa, flood"
+                       prefWidth="340"/>
+            <Button fx:id="runIngestBtn" text="Run Ingest" onAction="#onRunIngest"/>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <Button fx:id="checkEnvBtn" text="Check Env" onAction="#onCheckEnv"/>
+        </ToolBar>
+    </top>
+
+    <center>
+        <StackPane>
+            <Label fx:id="envLabel"/>
+        </StackPane>
+    </center>
+
+    <padding>
+        <Insets top="10" right="10" bottom="10" left="10"/>
+    </padding>
 </BorderPane>
