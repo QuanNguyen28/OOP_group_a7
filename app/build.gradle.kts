@@ -7,7 +7,10 @@ java {
   toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } // nếu bạn chỉ có 17, đổi 21 -> 17
 }
 
-application { mainClass.set("app.MainApp") }
+application { 
+  mainClass.set("app.MainApp") 
+  applicationDefaultJvmArgs += listOf("--enable-native-access=ALL-UNNAMED")
+}
 
 javafx {
   version = "21"
@@ -21,6 +24,7 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-core:2.17.0")
   implementation("com.typesafe:config:1.4.3")
   testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+  runtimeOnly("org.slf4j:slf4j-simple:2.0.13")
 }
 
 tasks.test { useJUnitPlatform() }

@@ -1,34 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.geometry.Insets?>
+
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
 
-<!-- Đã thêm stylesheets="@run.css" vào đây -->
-<BorderPane xmlns="http://javafx.com/javafx/21"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="app.controller.RunController"
-            stylesheets="@run.css">
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="app.controller.RunController">
 
+    <!-- Thanh công cụ trên cùng -->
     <top>
         <ToolBar>
-            <Label text="Yagi – Humanitarian Analytics (MVC)"/>
-            <Separator orientation="VERTICAL"/>
-            <TextField fx:id="keywordsField"
-                       promptText="keywords: yagi, ragasa, flood"
-                       prefWidth="340"/>
-            <Button fx:id="runIngestBtn" text="Run Ingest" onAction="#onRunIngest"/>
-            <Pane HBox.hgrow="ALWAYS"/>
-            <Button fx:id="checkEnvBtn" text="Check Env" onAction="#onCheckEnv"/>
+            <items>
+                <Label text="Humanitarian Analytics (Offline)"/>
+                <Separator orientation="VERTICAL"/>
+
+                <Label text="Keyword:"/>
+                <TextField fx:id="keywordField"
+                           promptText="ví dụ: yagi, ragasa, cuu tro"
+                           prefWidth="280"/>
+
+                <Button fx:id="runBtn" text="Run Ingest" onAction="#onRunIngest"/>
+                <Button text="Open Dashboard" onAction="#onOpenLastDashboard"/>
+
+                <!-- Spacer giãn sang phải: dùng thuộc tính HBox.hgrow -->
+                <Pane HBox.hgrow="ALWAYS"/>
+
+                <Label text="DB: data/app.db" style="-fx-opacity: 0.7;"/>
+            </items>
         </ToolBar>
     </top>
 
+    <!-- Nội dung trung tâm -->
     <center>
-        <StackPane>
-            <Label fx:id="envLabel"/>
-        </StackPane>
+        <VBox spacing="12.0" alignment="CENTER">
+            <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+            <Label fx:id="statusLabel" text="Ready"/>
+        </VBox>
     </center>
 
-    <padding>
-        <Insets top="10" right="10" bottom="10" left="10"/>
-    </padding>
 </BorderPane>

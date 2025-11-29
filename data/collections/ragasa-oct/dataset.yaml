@@ -1,0 +1,11 @@
+name: "ragasa-oct"
+description: "Synthetic Vietnamese posts/comments for ragasa-oct"
+time:
+  from: "2024-10-01T00:00:00Z"
+  to:   "2024-10-15T23:59:00Z"
+defaults:
+  lang: "vi"
+  platform: "twitter"
+keywords_hint: ["ragasa", "bao ragasa"]
+schema: "v1"
+records: 1000

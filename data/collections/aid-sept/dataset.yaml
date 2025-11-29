@@ -1,0 +1,11 @@
+name: "aid-sept"
+description: "Synthetic Vietnamese posts/comments for aid-sept"
+time:
+  from: "2024-09-07T00:00:00Z"
+  to:   "2024-09-20T23:59:00Z"
+defaults:
+  lang: "vi"
+  platform: "twitter"
+keywords_hint: ["cuu_tro", "thien_nguyen"]
+schema: "v1"
+records: 700

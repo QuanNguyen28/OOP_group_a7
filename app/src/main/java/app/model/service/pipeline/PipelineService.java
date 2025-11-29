@@ -1,92 +1,351 @@
 package app.model.service.pipeline;
 
-import app.model.service.config.AppConfig;
-import app.model.service.ingest.QuerySpec;
-import app.model.service.ingest.SocialConnector;
-import app.model.service.ingest.FileConnector;
-import app.model.service.preprocess.PreprocessService;
-import app.model.service.preprocess.DefaultPreprocessService;
-import app.model.repository.SQLite;
+import app.model.domain.CleanPost;
+import app.model.domain.RawPost;
+import app.model.domain.SentimentLabel;
+import app.model.domain.SentimentResult;
+import app.model.repository.AnalyticsRepo;
 import app.model.repository.PostsRepo;
 import app.model.repository.RunsRepo;
+import app.model.repository.SQLite;
+import app.model.service.ingest.FileConnector;
+import app.model.service.ingest.QuerySpec;
+import app.model.service.ingest.SocialConnector;
+import app.model.service.nlp.LocalNlpModel;
+import app.model.service.nlp.NlpModel;
+import app.model.service.preprocess.DefaultPreprocessService;
+import app.model.service.preprocess.PreprocessService;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Pipeline:
+ *  1) fetch từ connectors (stream)
+ *  2) preprocess (VI, không dấu)
+ *  3) lọc theo keyword sau chuẩn hoá
+ *  4) NLP (LocalNlpModel)
+ *  5) lưu posts, sentiments
+ *  6) aggregate theo ngày (overall_sentiment)
+ */
 public class PipelineService {
+
+    /* ---------- Factory ---------- */
+
+    public static PipelineService createDefault() {
+        Path cwd = Path.of("").toAbsolutePath();
+
+        // ---- Chọn DB path: ưu tiên ../data/app.db nếu đang chạy trong app/
+        Path dbPathPreferred = cwd.resolveSibling("data").resolve("app.db");   // ../data/app.db
+        Path dbPathAlt       = cwd.resolve("data").resolve("app.db");          // ./data/app.db
+        Path dbPath = Files.exists(dbPathPreferred.getParent()) ? dbPathPreferred : dbPathAlt;
+        try { Files.createDirectories(dbPath.getParent()); } catch (Exception ignore) {}
+
+        // ---- Chọn collections root: ưu tiên ../data/collections nếu tồn tại
+        Path collPreferred = cwd.resolveSibling("data").resolve("collections"); // ../data/collections
+        Path collAlt       = cwd.resolve("data").resolve("collections");        // ./data/collections
+        Path collectionsRoot = Files.isDirectory(collPreferred) ? collPreferred : collAlt;
+
+        System.out.println("[Pipeline] CWD        = " + cwd);
+        System.out.println("[Pipeline] DB path    = " + dbPath);
+        System.out.println("[Pipeline] Collections= " + collectionsRoot);
+
+        // SQLite của bạn nhận String path
+        SQLite db = new SQLite(dbPath.toString());
+        db.migrate();
+
+        // connectors: offline drop-folder
+        var connectors = List.<SocialConnector>of(new FileConnector(collectionsRoot));
+
+        // services
+        PreprocessService preprocess = new DefaultPreprocessService();
+        NlpModel nlp = new LocalNlpModel();
+
+        // repos
+        PostsRepo postsRepo = new PostsRepo(db);
+        AnalyticsRepo analyticsRepo = new AnalyticsRepo(db);
+        RunsRepo runsRepo = new RunsRepo(db);
+
+        return new PipelineService(db, connectors, preprocess, postsRepo, runsRepo, nlp, analyticsRepo);
+    }
+
+    /* ---------- Fields ---------- */
+
+    private final SQLite db;
     private final List<SocialConnector> connectors;
     private final PreprocessService preprocess;
     private final PostsRepo postsRepo;
     private final RunsRepo runsRepo;
+    private final NlpModel nlp;
+    private final AnalyticsRepo analyticsRepo;
 
-    public PipelineService(List<SocialConnector> connectors,
+    public PipelineService(SQLite db,
+                           List<SocialConnector> connectors,
                            PreprocessService preprocess,
                            PostsRepo postsRepo,
-                           RunsRepo runsRepo) {
+                           RunsRepo runsRepo,
+                           NlpModel nlp,
+                           AnalyticsRepo analyticsRepo) {
+        this.db = db;
         this.connectors = connectors;
         this.preprocess = preprocess;
         this.postsRepo = postsRepo;
         this.runsRepo = runsRepo;
+        this.nlp = nlp;
+        this.analyticsRepo = analyticsRepo;
     }
 
-    public RunSummary run(RunConfig rc) {
+    /** Cho Dashboard lấy đúng repo/DB. */
+    public AnalyticsRepo analyticsRepo() { return analyticsRepo; }
+
+    /* ---------- Result ---------- */
+
+    public static final class RunResult {
+        public final String runId;
+        public final int ingested;
+        public final int analyzed;
+        public RunResult(String runId, int ingested, int analyzed) {
+            this.runId = runId; this.ingested = ingested; this.analyzed = analyzed;
+        }
+    }
+
+    /* ---------- Public API ---------- */
+
+    public RunResult run(String rawKeyword) {
+        String runId = "run_" + System.currentTimeMillis();
         Instant started = Instant.now();
-        Map<String,Object> params = Map.of(
-            "keywords", rc.keywords(),
-            "from", rc.from().toString(),
-            "to", rc.to().toString(),
-            "connectors", rc.connectors()
-        );
-        runsRepo.saveRun(rc.runId(), started, params);
+        reflectStartRun(runId, rawKeyword, started);
 
-        QuerySpec spec = new QuerySpec(rc.keywords(), rc.from(), rc.to(),
-                                       Optional.empty(), Optional.empty(),
-                                       1_000_000, true);
+        Set<String> keys = expandKeywords(rawKeyword);
+        List<RawPost> raw = fetchFromConnectors(keys);
+        System.out.println("[Pipeline] raw from connectors = " + raw.size());
 
-        var selected = connectors.stream()
-                .filter(c -> rc.connectors().contains(c.id()))
+        List<CleanPost> cleaned = raw.stream()
+                .map(preprocess::preprocess)
+                .filter(cp -> matchByKeyword(cp.textNorm(), keys))
+                .toList();
+        System.out.println("[Pipeline] cleaned & matched   = " + cleaned.size());
+
+        // PostsRepo.saveBatch: có thể (List) hoặc (List,String) -> dùng reflection cho an toàn
+        reflectSavePosts(cleaned, runId);
+
+        List<SentimentResult> sents = cleaned.stream()
+                .map(cp -> nlp.analyzeSentiment(cp.rawId(), cp.textNorm(), cp.lang(), cp.ts()))
                 .toList();
 
-        var clean = selected.stream()
-                .flatMap(c -> c.fetch(spec))
-                .map(preprocess::preprocess)
-                .collect(Collectors.toList());
+        // Lưu sentiments trực tiếp qua SQLite (đồng nhất mọi repo setup)
+        saveSentimentsDirect(sents, runId);
 
-        postsRepo.attachRun(rc.runId());
-        int saved = postsRepo.saveBatch(clean);
+        // Aggregate theo ngày
+        Map<Instant, Counts> daily = aggregateDaily(sents);
+        for (var e : daily.entrySet()) {
+            Instant bucket = e.getKey();
+            Counts c = e.getValue();
+            reflectUpsertOverall(runId, bucket, c.pos, c.neg, c.neu);
+        }
 
-        return new RunSummary(rc.runId(), saved, 0, started, "n/a");
-    }
-    private static Path resolveBaseDataDir() {
-        Path p1 = Path.of("data");
-        if (Files.isDirectory(p1)) return p1;
-        Path p2 = Path.of("../data");
-        if (Files.isDirectory(p2)) return p2;
-        try { Files.createDirectories(p1); return p1; }
-        catch (Exception e){ throw new RuntimeException(e); }
+        reflectFinishRun(runId, started, Instant.now(), cleaned.size(), sents.size());
+        return new RunResult(runId, cleaned.size(), sents.size());
     }
 
-    private static Path ensureDemoDir(Path base) {
-        Path d = base.resolve("demo");
-        try { Files.createDirectories(d); return d; }
-        catch (Exception e){ throw new RuntimeException(e); }
+    public RunResult runIngest(String keyword) { return run(keyword); }
+
+    /* ---------- Helpers ---------- */
+
+    private List<RawPost> fetchFromConnectors(Set<String> keys) {
+        if (connectors == null || connectors.isEmpty()) return List.of();
+        QuerySpec spec = buildQuerySpec(keys);
+        List<RawPost> all = new ArrayList<>();
+        for (var c : connectors) {
+            try (var stream = c.fetch(spec)) {              // stream AutoCloseable? (an toàn)
+                if (stream != null) stream.forEach(all::add);
+            } catch (Exception ex) {
+                System.err.println("[WARN] Connector " + c.getClass().getSimpleName() + " failed: " + ex.getMessage());
+            }
+        }
+        return all;
     }
 
-    public static PipelineService createDefault() {
-        Path base = resolveBaseDataDir();                 // <-- dùng base linh hoạt
-        var db = new SQLite(base.resolve("app.db").toString());      // data/app.db (hoặc ../data/app.db)
-        db.migrate();
+    private Map<Instant, Counts> aggregateDaily(List<SentimentResult> sents) {
+        Map<Instant, Counts> map = new HashMap<>();
+        ZoneId utc = ZoneOffset.UTC;
+        for (var s : sents) {
+            LocalDate d = s.ts().atZone(utc).toLocalDate();
+            Instant bucketStart = d.atStartOfDay(utc).toInstant();
+            Counts c = map.computeIfAbsent(bucketStart, k -> new Counts());
+            if (s.label() == SentimentLabel.pos) c.pos++;
+            else if (s.label() == SentimentLabel.neg) c.neg++;
+            else c.neu++;
+        }
+        return map.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey, Map.Entry::getValue,
+                        (a,b) -> a, LinkedHashMap::new));
+    }
 
-        var postsRepo = new PostsRepo(db);
-        var runsRepo  = new RunsRepo(db);
+    private static final class Counts { int pos, neg, neu; }
 
-        List<SocialConnector> connectors = new ArrayList<>();
-        connectors.add(new FileConnector(ensureDemoDir(base))); // data/demo
+    private boolean matchByKeyword(String textNorm, Collection<String> keys) {
+        if (textNorm == null || textNorm.isBlank()) return false;
+        for (var k : keys) if (textNorm.contains(k)) return true;
+        return false;
+    }
 
-        PreprocessService preprocess = new DefaultPreprocessService();
-        return new PipelineService(connectors, preprocess, postsRepo, runsRepo);
+    private Set<String> expandKeywords(String input) {
+        String k = vnNormalize(input);
+        Set<String> out = new LinkedHashSet<>();
+        if (!k.isBlank()) {
+            out.add(k);
+            out.add("#" + k);
+            out.add("bao " + k);
+            out.add("#bao " + k);
+        }
+        return out;
+    }
+
+    private String vnNormalize(String s) {
+        if (s == null) return "";
+        String lower = s.toLowerCase(Locale.ROOT).trim();
+        String nfd = java.text.Normalizer.normalize(lower, java.text.Normalizer.Form.NFD);
+        return nfd.replaceAll("\\p{M}+", "")
+                  .replace("đ","d").replace("Đ","D")
+                  .replaceAll("\\s+", " ").trim();
+    }
+
+    private QuerySpec buildQuerySpec(Set<String> keys) {
+        // Ưu tiên static ofKeywords(Collection)
+        try {
+            Method m = QuerySpec.class.getMethod("ofKeywords", Collection.class);
+            return (QuerySpec) m.invoke(null, keys);
+        } catch (Throwable ignore) {}
+        // static fromKeywords(Collection)
+        try {
+            Method m = QuerySpec.class.getMethod("fromKeywords", Collection.class);
+            return (QuerySpec) m.invoke(null, keys);
+        } catch (Throwable ignore) {}
+        // ctor(Collection)
+        try {
+            Constructor<QuerySpec> c = QuerySpec.class.getDeclaredConstructor(Collection.class);
+            c.setAccessible(true);
+            return c.newInstance(keys);
+        } catch (Throwable ignore) {}
+        throw new RuntimeException("Cannot build QuerySpec from keywords.");
+    }
+
+    /* ---------- DB I/O trực tiếp cho sentiments & compat AnalyticsRepo ---------- */
+
+    private void saveSentimentsDirect(List<SentimentResult> sents, String runId) {
+        if (sents.isEmpty()) return;
+        String sql = "INSERT OR REPLACE INTO sentiments (id,label,score,ts,run_id) VALUES (?,?,?,?,?)";
+        try (Connection conn = db.connect();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            conn.setAutoCommit(false);
+            for (var s : sents) {
+                ps.setString(1, s.id());
+                ps.setString(2, s.label().name());
+                ps.setDouble(3, s.score());
+                ps.setString(4, s.ts().toString());
+                ps.setString(5, runId);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+            conn.commit();
+        } catch (Exception e) {
+            throw new RuntimeException("saveSentiments failed: " + e.getMessage(), e);
+        }
+    }
+
+    private void reflectUpsertOverall(String runId, Instant bucketStart, int pos, int neg, int neu) {
+        // 1) upsertOverallSentiment(String, Instant, int,int,int)
+        try {
+            Method m = AnalyticsRepo.class.getMethod(
+                    "upsertOverallSentiment", String.class, Instant.class, int.class, int.class, int.class);
+            m.invoke(analyticsRepo, runId, bucketStart, pos, neg, neu);
+            return;
+        } catch (NoSuchMethodException ignore) { } catch (Exception e) { throw wrap(e); }
+
+        // 2) saveOverallSentiment(String, Instant, int,int,int)
+        try {
+            Method m = AnalyticsRepo.class.getMethod(
+                    "saveOverallSentiment", String.class, Instant.class, int.class, int.class, int.class);
+            m.invoke(analyticsRepo, runId, bucketStart, pos, neg, neu);
+            return;
+        } catch (NoSuchMethodException ignore) { } catch (Exception e) { throw wrap(e); }
+
+        // 3) Dùng String time
+        try {
+            Method m = AnalyticsRepo.class.getMethod(
+                    "upsertOverallSentiment", String.class, String.class, int.class, int.class, int.class);
+            m.invoke(analyticsRepo, runId, bucketStart.toString(), pos, neg, neu);
+            return;
+        } catch (NoSuchMethodException ignore) { } catch (Exception e) { throw wrap(e); }
+
+        // 4) Fallback: ghi trực tiếp
+        String sql = "INSERT OR REPLACE INTO overall_sentiment(run_id,bucket_start,pos,neg,neu) VALUES (?,?,?,?,?)";
+        try (Connection conn = db.connect();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, runId);
+            ps.setString(2, bucketStart.toString());
+            ps.setInt(3, pos);
+            ps.setInt(4, neg);
+            ps.setInt(5, neu);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("upsert overall_sentiment failed: " + e.getMessage(), e);
+        }
+    }
+
+    private RuntimeException wrap(Exception e) {
+        return new RuntimeException(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+    }
+
+    /* ---------- RunsRepo compat bằng reflection ---------- */
+
+    private void reflectStartRun(String runId, String keyword, Instant started) {
+        try {
+            Method m = RunsRepo.class.getMethod("startRun", String.class, String.class, Instant.class);
+            m.invoke(runsRepo, runId, keyword, started);
+        } catch (NoSuchMethodException ignore) {
+            // not mandatory
+        } catch (Exception e) {
+            System.err.println("[WARN] startRun failed: " + e.getMessage());
+        }
+    }
+
+    private void reflectFinishRun(String runId, Instant started, Instant ended, int ingested, int analyzed) {
+        try {
+            Method m = RunsRepo.class.getMethod("finishRun",
+                    String.class, Instant.class, Instant.class, int.class, int.class);
+            m.invoke(runsRepo, runId, started, ended, ingested, analyzed);
+        } catch (NoSuchMethodException ignore) {
+            // not mandatory
+        } catch (Exception e) {
+            System.err.println("[WARN] finishRun failed: " + e.getMessage());
+        }
+    }
+
+    private void reflectSavePosts(List<CleanPost> cleaned, String runId) {
+        // Ưu tiên saveBatch(List<CleanPost>, String)
+        try {
+            Method m = PostsRepo.class.getMethod("saveBatch", List.class, String.class);
+            m.invoke(postsRepo, cleaned, runId);
+            return;
+        } catch (NoSuchMethodException ignore) { } catch (Exception e) { throw wrap(e); }
+
+        // Fallback: saveBatch(List<CleanPost>)
+        try {
+            Method m = PostsRepo.class.getMethod("saveBatch", List.class);
+            m.invoke(postsRepo, cleaned);
+        } catch (Exception e) {
+            throw new RuntimeException("PostsRepo.saveBatch failed: " + e.getMessage(), e);
+        }
     }
 }

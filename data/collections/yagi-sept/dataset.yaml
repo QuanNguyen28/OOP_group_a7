@@ -1,0 +1,11 @@
+name: "Yagi Sept Simulated"
+description: "Synthetic Vietnamese posts about typhoons Yagi/Ragasa for OOP project"
+time:
+  from: "2024-09-06T00:00:00Z"
+  to:   "2024-09-30T23:59:59Z"
+defaults:
+  lang: "vi"
+  platform: "twitter"
+keywords_hint: ["yagi","ragasa","cuu tro","ngap lut","thiet hai"]
+schema: "v1"
+records: 1000

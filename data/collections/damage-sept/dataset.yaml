@@ -1,0 +1,11 @@
+name: "damage-sept"
+description: "Synthetic Vietnamese posts/comments for damage-sept"
+time:
+  from: "2024-09-06T00:00:00Z"
+  to:   "2024-09-12T23:59:00Z"
+defaults:
+  lang: "vi"
+  platform: "twitter"
+keywords_hint: ["thiet_hai", "ngap_lut"]
+schema: "v1"
+records: 800

@@ -1,66 +1,105 @@
 package app.controller;
 
-import app.model.service.config.AppConfig;
 import app.model.service.pipeline.PipelineService;
-import app.model.service.pipeline.RunConfig;
+import app.model.service.pipeline.PipelineService.RunResult;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
-
-import java.time.Instant;
-import java.util.*;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;   // quan trọng: dùng javafx.scene.Parent
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.stage.Stage;
 
 public class RunController {
-    @FXML private Label envLabel;
-    @FXML private Button checkEnvBtn;
-    @FXML private TextField keywordsField;
-    @FXML private Button runIngestBtn;
 
-    private AppConfig config;
+    @FXML private TextField keywordField;
+    @FXML private Button runBtn;
+    @FXML private Label statusLabel;
+
     private PipelineService pipeline;
+    private String lastRunId;
 
     @FXML
     public void initialize() {
-        try {
-            config = AppConfig.load();
-            // FIX: Xóa tham số 'config' vì hàm createDefault() không nhận tham số nào
-            pipeline = PipelineService.createDefault();
-            envLabel.setText("Ready. Edit keywords or press Run Ingest.");
-        } catch (Exception e) {
-            e.printStackTrace();
-            envLabel.setText("Error: " + e.getMessage());
-        }
+        // Khởi tạo pipeline mặc định (DB: data/app.db, FileConnector: data/collections)
+        this.pipeline = PipelineService.createDefault();
+        if (statusLabel != null) statusLabel.setText("Ready");
     }
 
     @FXML
-    public void onCheckEnv() {
-        String javaVer = System.getProperty("java.version");
-        envLabel.setText("Java " + javaVer + " ✓");
+    private void onRunIngest() {
+        final String kw = keywordField != null && keywordField.getText() != null
+                ? keywordField.getText().trim() : "";
+        if (kw.isEmpty()) {
+            if (statusLabel != null) statusLabel.setText("Vui lòng nhập từ khóa");
+            return;
+        }
+
+        if (runBtn != null) runBtn.setDisable(true);
+        if (statusLabel != null) statusLabel.setText("Đang chạy ingest + NLP…");
+
+        Task<RunResult> job = new Task<>() {
+            @Override protected RunResult call() {
+                return pipeline.run(kw); // chạy pipeline ở background
+            }
+        };
+
+        job.setOnSucceeded(ev -> {
+            RunResult result = job.getValue();
+            lastRunId = result.runId;
+            if (statusLabel != null) {
+                statusLabel.setText("Ingested: " + result.ingested +
+                        " | Analyzed: " + result.analyzed + " ✓ (run=" + lastRunId + ")");
+            }
+            // Mở Dashboard cho run vừa xong
+            openDashboard(pipeline, lastRunId);
+            if (runBtn != null) runBtn.setDisable(false);
+        });
+
+        job.setOnFailed(ev -> {
+            Throwable e = job.getException();
+            e.printStackTrace();
+            if (statusLabel != null) statusLabel.setText("Lỗi chạy pipeline: " + (e != null ? e.getMessage() : "unknown"));
+            if (runBtn != null) runBtn.setDisable(false);
+        });
+
+        Thread t = new Thread(job, "pipeline-run");
+        t.setDaemon(true);
+        t.start();
     }
 
-    private static List<String> parseKeywords(String raw){
-        if (raw == null) return List.of();
-        return Arrays.stream(raw.split(",")).map(String::trim)
-                .filter(s -> !s.isBlank()).distinct().toList();
-    }
-
-    @FXML
-    public void onRunIngest() {
+    /** Mở cửa sổ Dashboard và truyền đúng repo + runId. */
+    private void openDashboard(PipelineService pipeline, String runId) {
         try {
-            var uiKeywords = parseKeywords(keywordsField.getText());
-            var chosen = uiKeywords.isEmpty() ? config.run.keywords : uiKeywords;
-            var rc = new RunConfig(
-                    UUID.randomUUID().toString(),
-                    config.run.connectors,
-                    chosen,
-                    Instant.parse(config.run.time.from),
-                    Instant.parse(config.run.time.to),
-                    Set.copyOf(config.run.tasks)
-            );
-            var summary = pipeline.run(rc);
-            envLabel.setText("Ingested: " + summary.ingested() + " rows ✓");
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/fxml/dashboard.fxml"));
+            Parent root = loader.load(); // <-- Parent, không để kiểu Object
+
+            DashboardController ctrl = loader.getController();
+            ctrl.setAnalyticsRepo(pipeline.analyticsRepo()); // dùng chung DB với pipeline
+            ctrl.setRun(runId);
+            ctrl.loadData(); // vẽ chart
+
+            Stage st = new Stage();
+            st.setTitle("Dashboard");
+            st.setScene(new Scene(root));
+            st.show();
         } catch (Exception e) {
             e.printStackTrace();
-            envLabel.setText("Error: " + e.getMessage());
+            if (statusLabel != null) statusLabel.setText("Open Dashboard failed: " + e.getMessage());
         }
+    }
+
+    /** Nút phụ: mở lại dashboard của lần chạy gần nhất. */
+    @FXML
+    private void onOpenLastDashboard() {
+        if (lastRunId == null) {
+            if (statusLabel != null) statusLabel.setText("Chưa có run nào");
+            return;
+        }
+        // mở lại
+        openDashboard(pipeline, lastRunId);
     }
 }
