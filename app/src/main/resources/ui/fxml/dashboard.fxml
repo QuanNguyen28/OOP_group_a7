@@ -1,12 +1,100 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.chart.*?>
 <?import javafx.scene.layout.*?>
-<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+<?import javafx.scene.control.*?>
+<?import javafx.scene.chart.*?>
+
+<!-- Modern tabbed dashboard: each task in its own Tab -->
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="app.controller.DashboardController">
+
+    <!-- Filters / global controls -->
+    <top>
+        <VBox spacing="8" styleClass="page">
+            <HBox spacing="12">
+                <Label text="Run:"/>
+                <ComboBox fx:id="runSelector" prefWidth="220"/>
+
+                <Separator orientation="VERTICAL"/>
+
+                <Label text="From:"/>
+                <DatePicker fx:id="fromDate"/>
+                <Label text="To:"/>
+                <DatePicker fx:id="toDate"/>
+
+                <Separator orientation="VERTICAL"/>
+
+                <Label text="Top N:"/>
+                <Spinner fx:id="topNSpinner" prefWidth="90"/>
+
+                <Button fx:id="btnRefresh" text="Refresh" styleClass="toolbar-btn"/>
+                <Button fx:id="btnExport" text="Export CSV" styleClass="toolbar-btn"/>
+            </HBox>
+
+            <Label fx:id="statusLabel" text="Ready"/>
+        </VBox>
+    </top>
+
+    <!-- Center content: 4 Tabs = 4 tasks -->
     <center>
-        <LineChart fx:id="sentimentChart">
-            <xAxis><CategoryAxis/></xAxis>
-            <yAxis><NumberAxis/></yAxis>
-        </LineChart>
+        <TabPane tabClosingPolicy="UNAVAILABLE" styleClass="primary-tabs">
+            <tabs>
+                <!-- (1) Sentiment -->
+                <Tab text="Sentiment">
+                    <content>
+                        <StackPane styleClass="card">
+                            <LineChart fx:id="sentimentChart">
+                                <xAxis><CategoryAxis label="Day"/></xAxis>
+                                <yAxis><NumberAxis label="Posts"/></yAxis>
+                            </LineChart>
+                        </StackPane>
+                    </content>
+                </Tab>
+
+                <!-- (2) Damage -->
+                <Tab text="Damage">
+                    <content>
+                        <StackPane styleClass="card">
+                            <BarChart fx:id="damageChart">
+                                <xAxis><CategoryAxis label="Type"/></xAxis>
+                                <yAxis><NumberAxis label="Count"/></yAxis>
+                            </BarChart>
+                        </StackPane>
+                    </content>
+                </Tab>
+
+                <!-- (3) Relief -->
+                <Tab text="Relief">
+                    <content>
+                        <StackPane styleClass="card">
+                            <BarChart fx:id="reliefChart">
+                                <xAxis><CategoryAxis label="Item"/></xAxis>
+                                <yAxis><NumberAxis label="Count"/></yAxis>
+                            </BarChart>
+                        </StackPane>
+                    </content>
+                </Tab>
+
+                <!-- (4) Trends -->
+                <Tab text="Trends">
+                    <content>
+                        <VBox spacing="12">
+                            <StackPane styleClass="card">
+                                <BarChart fx:id="kwChart">
+                                    <xAxis><CategoryAxis label="Keyword"/></xAxis>
+                                    <yAxis><NumberAxis label="Count"/></yAxis>
+                                </BarChart>
+                            </StackPane>
+                            <StackPane styleClass="card">
+                                <BarChart fx:id="tagChart">
+                                    <xAxis><CategoryAxis label="Hashtag"/></xAxis>
+                                    <yAxis><NumberAxis label="Count"/></yAxis>
+                                </BarChart>
+                            </StackPane>
+                        </VBox>
+                    </content>
+                </Tab>
+            </tabs>
+        </TabPane>
     </center>
 </BorderPane>

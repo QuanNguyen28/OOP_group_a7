@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
  *  4) NLP (LocalNlpModel)
  *  5) lưu posts, sentiments
  *  6) aggregate theo ngày (overall_sentiment)
+ *  7) (mới) damage/relief/trends -> ghi vào DB cho 4 bài toán
  */
 public class PipelineService {
 
@@ -133,23 +134,30 @@ public class PipelineService {
                 .toList();
         System.out.println("[Pipeline] cleaned & matched   = " + cleaned.size());
 
-        // PostsRepo.saveBatch: có thể (List) hoặc (List,String) -> dùng reflection cho an toàn
+        // 1) Lưu posts
         reflectSavePosts(cleaned, runId);
 
+        // 2) Sentiment
         List<SentimentResult> sents = cleaned.stream()
                 .map(cp -> nlp.analyzeSentiment(cp.rawId(), cp.textNorm(), cp.lang(), cp.ts()))
                 .toList();
-
-        // Lưu sentiments trực tiếp qua SQLite (đồng nhất mọi repo setup)
         saveSentimentsDirect(sents, runId);
 
-        // Aggregate theo ngày
+        // 3) Overall sentiment by day
         Map<Instant, Counts> daily = aggregateDaily(sents);
         for (var e : daily.entrySet()) {
             Instant bucket = e.getKey();
             Counts c = e.getValue();
             reflectUpsertOverall(runId, bucket, c.pos, c.neg, c.neu);
         }
+
+        // 4) Damage & Relief (bài toán 2 & 3)
+        int dmgRows = saveDamageDirect(cleaned, runId);
+        int rlfRows = saveReliefDirect(cleaned, runId);
+        System.out.println("[Pipeline] damage rows = " + dmgRows + " | relief rows = " + rlfRows);
+
+        // 5) Trends (bài toán 4)
+        aggregateTrends(cleaned, runId);
 
         reflectFinishRun(runId, started, Instant.now(), cleaned.size(), sents.size());
         return new RunResult(runId, cleaned.size(), sents.size());
@@ -348,4 +356,115 @@ public class PipelineService {
             throw new RuntimeException("PostsRepo.saveBatch failed: " + e.getMessage(), e);
         }
     }
+
+    /* ---------- NEW: Bài toán 2,3,4 ghi trực tiếp DB ---------- */
+
+    private int saveDamageDirect(List<CleanPost> cleaned, String runId) {
+        if (cleaned.isEmpty()) return 0;
+        if (!(nlp instanceof LocalNlpModel model)) return 0;
+
+        String sql = "INSERT INTO damage(id,type,ts,run_id) VALUES (?,?,?,?)";
+        int rows = 0;
+        try (var conn = db.connect(); var ps = conn.prepareStatement(sql)) {
+            conn.setAutoCommit(false);
+            for (var cp : cleaned) {
+                var types = model.detectDamageTypes(cp.textNorm());
+                for (String t : types) {
+                    ps.setString(1, cp.rawId());
+                    ps.setString(2, t);
+                    ps.setString(3, cp.ts().toString());
+                    ps.setString(4, runId);
+                    ps.addBatch(); rows++;
+                }
+            }
+            ps.executeBatch();
+            conn.commit();
+        } catch (Exception e) {
+            System.err.println("[WARN] saveDamageDirect: " + e.getMessage());
+        }
+        return rows;
+    }
+
+    private int saveReliefDirect(List<CleanPost> cleaned, String runId) {
+        if (cleaned.isEmpty()) return 0;
+        if (!(nlp instanceof LocalNlpModel model)) return 0;
+
+        String sql = "INSERT INTO relief_items(id,item,ts,run_id) VALUES (?,?,?,?)";
+        int rows = 0;
+        try (var conn = db.connect(); var ps = conn.prepareStatement(sql)) {
+            conn.setAutoCommit(false);
+            for (var cp : cleaned) {
+                var items = model.detectReliefItems(cp.textNorm());
+                for (String it : items) {
+                    ps.setString(1, cp.rawId());
+                    ps.setString(2, it);
+                    ps.setString(3, cp.ts().toString());
+                    ps.setString(4, runId);
+                    ps.addBatch(); rows++;
+                }
+            }
+            ps.executeBatch();
+            conn.commit();
+        } catch (Exception e) {
+            System.err.println("[WARN] saveReliefDirect: " + e.getMessage());
+        }
+        return rows;
+    }
+
+    private void aggregateTrends(List<CleanPost> cleaned, String runId) {
+        if (cleaned.isEmpty()) return;
+        if (!(nlp instanceof LocalNlpModel model)) return;
+
+        Map<String, Map<String,Integer>> tokenDaily = new LinkedHashMap<>();
+        Map<String, Map<String,Integer>> hashtagDaily = new LinkedHashMap<>();
+        var utc = ZoneOffset.UTC;
+
+        for (var cp : cleaned) {
+            String day = cp.ts().atZone(utc).toLocalDate().atStartOfDay(utc).toInstant().toString();
+
+            for (String tok : model.tokenizeForTrends(cp.textNorm())) {
+                if (tok.startsWith("#")) {
+                    hashtagDaily.computeIfAbsent(day, k -> new HashMap<>()).merge(tok, 1, Integer::sum);
+                } else {
+                    tokenDaily.computeIfAbsent(day, k -> new HashMap<>()).merge(tok, 1, Integer::sum);
+                }
+            }
+        }
+
+        String sqlTok = "INSERT OR REPLACE INTO keyword_counts(run_id,bucket_start,token,cnt) VALUES (?,?,?,?)";
+        String sqlHash = "INSERT OR REPLACE INTO hashtag_counts(run_id,bucket_start,tag,cnt) VALUES (?,?,?,?)";
+
+        try (var conn = db.connect();
+             var pst = conn.prepareStatement(sqlTok);
+             var psh = conn.prepareStatement(sqlHash)) {
+            conn.setAutoCommit(false);
+
+            for (var e : tokenDaily.entrySet()) {
+                String day = e.getKey();
+                for (var t : e.getValue().entrySet()) {
+                    pst.setString(1, runId);
+                    pst.setString(2, day);
+                    pst.setString(3, t.getKey());
+                    pst.setInt(4, t.getValue());
+                    pst.addBatch();
+                }
+            }
+            for (var e : hashtagDaily.entrySet()) {
+                String day = e.getKey();
+                for (var t : e.getValue().entrySet()) {
+                    psh.setString(1, runId);
+                    psh.setString(2, day);
+                    psh.setString(3, t.getKey());
+                    psh.setInt(4, t.getValue());
+                    psh.addBatch();
+                }
+            }
+            pst.executeBatch();
+            psh.executeBatch();
+            conn.commit();
+        } catch (Exception ex) {
+            System.err.println("[WARN] aggregateTrends: " + ex.getMessage());
+        }
+    }
+
 }

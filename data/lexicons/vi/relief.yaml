@@ -1,0 +1,28 @@
+relief_items:
+  food:
+    - "gao"
+    - "mi tom"
+    - "thuc pham"
+    - "do an"
+    - "sua bot"
+    - "banh mi"
+  water:
+    - "nuoc uong"
+    - "nuoc sach"
+    - "nuoc dong chai"
+  medicine:
+    - "thuoc men"
+    - "y te"
+    - "so cap cuu"
+    - "bang y te"
+    - "khau trang"
+  shelter:
+    - "chan man"
+    - "leu trai"
+    - "cho o tam"
+    - "chan am"
+  power_comm:
+    - "sac du phong"
+    - "pin sac"
+    - "den pin"
+    - "bo phat wifi"

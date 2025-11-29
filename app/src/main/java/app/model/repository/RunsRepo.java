@@ -36,4 +36,11 @@ public class RunsRepo {
             throw new RuntimeException(e);
         }
     }
+
+    public static record RunSummary(String id, java.time.Instant started) {}
+
+    public java.util.List<RunSummary> listRunsOrderByStartedDesc(int limit) {
+        return java.util.Collections.emptyList();
+    }
+
 }

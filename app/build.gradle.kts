@@ -10,6 +10,8 @@ java {
 application { 
   mainClass.set("app.MainApp") 
   applicationDefaultJvmArgs += listOf("--enable-native-access=ALL-UNNAMED")
+  applicationDefaultJvmArgs =
+      listOf("-Dapp.data.dir=${rootProject.rootDir}/data")
 }
 
 javafx {

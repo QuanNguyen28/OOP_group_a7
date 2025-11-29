@@ -27,6 +27,7 @@ public class RunController {
         // Khởi tạo pipeline mặc định (DB: data/app.db, FileConnector: data/collections)
         this.pipeline = PipelineService.createDefault();
         if (statusLabel != null) statusLabel.setText("Ready");
+        if (keywordField != null) keywordField.setOnAction(e -> onRunIngest());
     }
 
     @FXML
@@ -75,16 +76,25 @@ public class RunController {
     private void openDashboard(PipelineService pipeline, String runId) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/fxml/dashboard.fxml"));
-            Parent root = loader.load(); // <-- Parent, không để kiểu Object
-
+            Parent root = loader.load();
+            // Wire controller
             DashboardController ctrl = loader.getController();
-            ctrl.setAnalyticsRepo(pipeline.analyticsRepo()); // dùng chung DB với pipeline
-            ctrl.setRun(runId);
-            ctrl.loadData(); // vẽ chart
+            if (ctrl != null) {
+                // Use existing API in your project
+                ctrl.setAnalyticsRepo(pipeline.analyticsRepo());
+                ctrl.setRun(runId);
+                ctrl.loadData();
+            }
 
-            Stage st = new Stage();
+            // Reuse current stage instead of opening new window
+            Stage st = (Stage) runBtn.getScene().getWindow();
+            Scene scene = new Scene(root, 1200, 720);
+            scene.getStylesheets().addAll(
+                getClass().getResource("/ui/styles/tokens.css").toExternalForm(),
+                getClass().getResource("/ui/styles/app.css").toExternalForm()
+            );
             st.setTitle("Dashboard");
-            st.setScene(new Scene(root));
+            st.setScene(scene);
             st.show();
         } catch (Exception e) {
             e.printStackTrace();

@@ -1,0 +1,30 @@
+<BorderPane fx:controller="app.controller.ShellController" xmlns:fx="http://javafx.com/fxml">
+  <top>
+    <ToolBar fx:id="topBar" styleClass="appbar">
+      <Label text="OOP • Disaster Analytics" styleClass="appbar-title"/>
+      <Separator />
+      <ComboBox fx:id="runSelector" promptText="Select Run"/>
+      <TextField fx:id="keywordField" promptText="Enter keywords (e.g., yagi, ragasa)" />
+      <Button fx:id="runBtn" text="Run" defaultButton="true"/>
+      <Button fx:id="exportBtn" text="Export"/>
+      <ToggleButton fx:id="themeToggle" text="Dark"/>
+    </ToolBar>
+  </top>
+  <left>
+    <VBox styleClass="nav">
+      <ToggleButton text="Run"    fx:id="navRun" />
+      <ToggleButton text="Dashboard" fx:id="navDash" />
+      <ToggleButton text="Data & Lexicons" fx:id="navData" />
+      <ToggleButton text="Settings" fx:id="navSettings" />
+    </VBox>
+  </left>
+  <center>
+    <StackPane fx:id="contentHost"/>
+  </center>
+  <bottom>
+    <HBox styleClass="statusbar">
+      <ProgressBar fx:id="progress" prefWidth="200"/>
+      <Label fx:id="statusLabel" text="Ready"/>
+    </HBox>
+  </bottom>
+</BorderPane>

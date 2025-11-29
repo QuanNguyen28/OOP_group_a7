@@ -1,0 +1,23 @@
+damage_types:
+  infrastructure:
+    - "duong hu hong"
+    - "cau sap"
+    - "mat dien"
+    - "dien cap"
+    - "giao thong gian doan"
+    - "ket xe"
+    - "sap cau"
+    - "do nat ha tang"
+  housing:
+    - "nha sap"
+    - "mai ton bay"
+    - "do nat"
+    - "vo cua kinh"
+    - "thiet hai nha cua"
+    - "do mai nha"
+  flood:
+    - "ngap sau"
+    - "nuoc dang cao"
+    - "lu lut"
+    - "ngap nuoc"
+    - "ngap duong"

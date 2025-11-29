@@ -1,0 +1,25 @@
+/* Tabs header look */
+.primary-tabs .tab-header-area {
+  -fx-padding: 0 8 0 8;
+}
+.primary-tabs .tab {
+  -fx-padding: 8 16;
+}
+.primary-tabs .tab:selected .tab-label {
+  -fx-font-weight: 600;
+}
+.primary-tabs .tab-header-background {
+  -fx-background-color: -color-surface;
+  -fx-border-color: -color-outline;
+  -fx-border-width: 0 0 1 0;
+}
+
+/* Card container for charts */
+.card {
+  -fx-background-color: -color-surface;
+  -fx-background-radius: 12;
+  -fx-border-radius: 12;
+  -fx-border-color: -color-outline;
+  -fx-border-width: 1;
+  -fx-padding: 12;
+}
