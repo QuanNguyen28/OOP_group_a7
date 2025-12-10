@@ -2,7 +2,6 @@ package app.controller;
 
 import app.model.service.pipeline.PipelineService;
 import app.model.service.pipeline.PipelineService.RunResult;
-import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -72,7 +71,7 @@ public class RunController {
         t.start();
     }
 
-    /** Mở cửa sổ Dashboard và truyền đúng repo + runId. */
+    /** Mở cửa sổ Dashboard và truyền runId. */
     private void openDashboard(PipelineService pipeline, String runId) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/fxml/dashboard.fxml"));
@@ -80,8 +79,7 @@ public class RunController {
             // Wire controller
             DashboardController ctrl = loader.getController();
             if (ctrl != null) {
-                // Use existing API in your project
-                ctrl.setAnalyticsRepo(pipeline.analyticsRepo());
+                // Just set the runId - services are initialized internally
                 ctrl.setRun(runId);
                 ctrl.loadData();
             }

@@ -42,24 +42,34 @@
                 <!-- (1) Sentiment -->
                 <Tab text="Sentiment">
                     <content>
-                        <StackPane styleClass="card">
-                            <LineChart fx:id="sentimentChart">
-                                <xAxis><CategoryAxis label="Day"/></xAxis>
-                                <yAxis><NumberAxis label="Posts"/></yAxis>
-                            </LineChart>
-                        </StackPane>
+                        <VBox spacing="8" styleClass="page">
+                            <Label fx:id="overallSubtitle" text="Loading..."/>
+                            <StackPane styleClass="card">
+                                <LineChart fx:id="overallChart">
+                                    <xAxis><CategoryAxis label="Day"/></xAxis>
+                                    <yAxis><NumberAxis label="Posts"/></yAxis>
+                                </LineChart>
+                            </StackPane>
+                        </VBox>
                     </content>
                 </Tab>
 
                 <!-- (2) Damage -->
                 <Tab text="Damage">
                     <content>
-                        <StackPane styleClass="card">
-                            <BarChart fx:id="damageChart">
-                                <xAxis><CategoryAxis label="Type"/></xAxis>
-                                <yAxis><NumberAxis label="Count"/></yAxis>
-                            </BarChart>
-                        </StackPane>
+                        <VBox spacing="8" styleClass="page">
+                            <HBox spacing="8">
+                                <Label text="View:"/>
+                                <!-- ComboBox trống; items do Controller thêm -->
+                                <ComboBox fx:id="damageView" prefWidth="180"/>
+                            </HBox>
+                            <StackPane styleClass="card">
+                                <BarChart fx:id="damageChart">
+                                    <xAxis><CategoryAxis label="Type/Day"/></xAxis>
+                                    <yAxis><NumberAxis label="Count"/></yAxis>
+                                </BarChart>
+                            </StackPane>
+                        </VBox>
                     </content>
                 </Tab>
 
@@ -67,32 +77,47 @@
                 <Tab text="Relief">
                     <content>
                         <StackPane styleClass="card">
-                            <BarChart fx:id="reliefChart">
-                                <xAxis><CategoryAxis label="Item"/></xAxis>
-                                <yAxis><NumberAxis label="Count"/></yAxis>
-                            </BarChart>
+                            <PieChart fx:id="reliefPie"/>
                         </StackPane>
                     </content>
                 </Tab>
 
-                <!-- (4) Trends -->
-                <Tab text="Trends">
-                    <content>
-                        <VBox spacing="12">
-                            <StackPane styleClass="card">
-                                <BarChart fx:id="kwChart">
-                                    <xAxis><CategoryAxis label="Keyword"/></xAxis>
-                                    <yAxis><NumberAxis label="Count"/></yAxis>
-                                </BarChart>
-                            </StackPane>
-                            <StackPane styleClass="card">
-                                <BarChart fx:id="tagChart">
-                                    <xAxis><CategoryAxis label="Hashtag"/></xAxis>
-                                    <yAxis><NumberAxis label="Count"/></yAxis>
-                                </BarChart>
-                            </StackPane>
-                        </VBox>
-                    </content>
+                <!-- ============== Task 3: Satisfaction by Category ============== -->
+                <Tab text="Task 3: Satisfaction">
+                <content>
+                    <VBox spacing="10" alignment="CENTER" style="-fx-padding: 10;">
+                        <Label text="Mức độ hài lòng theo từng loại hàng cứu trợ" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+
+                        <!-- fx:id phải trùng với biến task3Chart trong Controller -->
+                        <StackedBarChart fx:id="task3Chart">
+                            <xAxis>
+                                <CategoryAxis label="Loại hàng cứu trợ" />
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis label="Số lượng bài viết" />
+                            </yAxis>
+                        </StackedBarChart>
+                    </VBox>
+                </content>
+                </Tab>
+
+                <!-- ============== Task 4: Sentiment over Time per Category ============== -->
+                <Tab text="Task 4: Trends">
+                <content>
+                    <VBox spacing="10" alignment="CENTER" style="-fx-padding: 10;">
+                        <Label text="Diễn biến tâm lý theo thời gian (Trung bình cộng)" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+
+                        <!-- fx:id phải trùng với biến task4Chart trong Controller -->
+                        <LineChart fx:id="task4Chart">
+                            <xAxis>
+                                <CategoryAxis label="Ngày" />
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis label="Điểm cảm xúc (-1 đến 1)" lowerBound="-1" upperBound="1" autoRanging="false"/>
+                            </yAxis>
+                        </LineChart>
+                    </VBox>
+                </content>
                 </Tab>
             </tabs>
         </TabPane>

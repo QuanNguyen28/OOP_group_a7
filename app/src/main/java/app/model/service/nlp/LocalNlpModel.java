@@ -101,19 +101,66 @@ public class LocalNlpModel implements NlpModel {
         return out;
     }
 
-    /* ================= Relief items (Task 3) ================= */
+    /* ================= Relief items (Task 3 & 4) ================= */
+
+    /**
+     * NÂNG CẤP: Trả về Map<Category, Score> để biết cảm xúc cụ thể cho từng loại hàng.
+     * Logic: Tìm từ khóa substring -> Khoanh vùng (window) +/- 5 từ xung quanh -> Tính điểm sentiment vùng đó.
+     */
+    public Map<String, Double> analyzeReliefSentiment(String textNorm) {
+        Map<String, Double> result = new HashMap<>();
+        if (textNorm == null || textNorm.isBlank()) return result;
+
+        List<String> tokens = tokenize(textNorm);
+        int windowSize = 5; // Số từ trước và sau để xét ngữ cảnh
+
+        for (var entry : reliefMap.entrySet()) {
+            String category = entry.getKey();
+            List<String> phrases = entry.getValue();
+
+            for (String phrase : phrases) {
+                // Tìm cụm từ trực tiếp bằng substring (đơn giản và đáng tin cậy hơn)
+                int idx = textNorm.indexOf(phrase);
+                if (idx != -1) {
+                    // Tìm vị trí từ (token) tương ứng với vị trí ký tự idx
+                    List<String> phraseToks = tokenize(phrase);
+                    int charCount = 0;
+                    int tokenIdx = -1;
+                    
+                    for (int i = 0; i < tokens.size(); i++) {
+                        if (charCount == idx) {
+                            tokenIdx = i;
+                            break;
+                        }
+                        charCount += tokens.get(i).length() + 1; // +1 cho space
+                    }
+
+                    if (tokenIdx >= 0) {
+                        // Cắt cửa sổ ngữ cảnh
+                        int start = Math.max(0, tokenIdx - windowSize);
+                        int end = Math.min(tokens.size(), tokenIdx + phraseToks.size() + windowSize);
+                        
+                        List<String> contextWindow = tokens.subList(start, end);
+                        
+                        // Tính điểm sentiment cục bộ
+                        double localScore = lexicalScoreVI(contextWindow);
+                        
+                        // Cộng dồn điểm
+                        result.merge(category, localScore, Double::sum);
+                    }
+                }
+            }
+        }
+
+        // Chuẩn hoá điểm về khoảng [-1, 1]
+        result.replaceAll((k, v) -> Math.max(-1.0, Math.min(1.0, v)));
+        return result;
+    }
 
     /** Tìm nhóm vật phẩm cứu trợ xuất hiện trong câu (match phrase không dấu). */
     public List<String> detectReliefItems(String textNorm) {
-        List<String> out = new ArrayList<>();
-        if (textNorm == null || textNorm.isBlank()) return out;
-        for (var e : reliefMap.entrySet()) {
-            String item = e.getKey();
-            for (String phrase : e.getValue()) {
-                if (textNorm.contains(phrase)) { out.add(item); break; }
-            }
-        }
-        return out;
+        // Sử dụng logic mới để đảm bảo nhất quán
+        return new ArrayList<>(analyzeReliefSentiment(textNorm).keySet());
     }
 
     /* ================= Trends (Task 4) ================= */
@@ -129,6 +176,22 @@ public class LocalNlpModel implements NlpModel {
     }
 
     /* ================= Nội bộ: chấm điểm lexicon ================= */
+
+    // Helper: Tìm vị trí xuất hiện đầu tiên của cụm từ trong danh sách token
+    private int findPhraseIndex(List<String> tokens, List<String> phraseToks) {
+        if (phraseToks.size() > tokens.size()) return -1;
+        for (int i = 0; i <= tokens.size() - phraseToks.size(); i++) {
+            boolean match = true;
+            for (int j = 0; j < phraseToks.size(); j++) {
+                if (!tokens.get(i + j).equals(phraseToks.get(j))) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) return i;
+        }
+        return -1;
+    }
 
     private double lexicalScoreVI(List<String> toks) {
         int pos = 0, neg = 0;

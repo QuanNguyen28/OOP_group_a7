@@ -25,16 +25,17 @@ import java.sql.PreparedStatement;
 import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Pipeline:
- *  1) fetch từ connectors (stream)
- *  2) preprocess (VI, không dấu)
+ *  1) fetch từ connectors (Stream)
+ *  2) preprocess (chuẩn hoá VI, không dấu)
  *  3) lọc theo keyword sau chuẩn hoá
  *  4) NLP (LocalNlpModel)
  *  5) lưu posts, sentiments
  *  6) aggregate theo ngày (overall_sentiment)
- *  7) (mới) damage/relief/trends -> ghi vào DB cho 4 bài toán
+ *  7) Damage/Relief + Task 3 & 4 (ghi trực tiếp DB)
  */
 public class PipelineService {
 
@@ -43,13 +44,13 @@ public class PipelineService {
     public static PipelineService createDefault() {
         Path cwd = Path.of("").toAbsolutePath();
 
-        // ---- Chọn DB path: ưu tiên ../data/app.db nếu đang chạy trong app/
+        // ---- DB path: ưu tiên ../data/app.db nếu đang chạy trong app/
         Path dbPathPreferred = cwd.resolveSibling("data").resolve("app.db");   // ../data/app.db
         Path dbPathAlt       = cwd.resolve("data").resolve("app.db");          // ./data/app.db
         Path dbPath = Files.exists(dbPathPreferred.getParent()) ? dbPathPreferred : dbPathAlt;
         try { Files.createDirectories(dbPath.getParent()); } catch (Exception ignore) {}
 
-        // ---- Chọn collections root: ưu tiên ../data/collections nếu tồn tại
+        // ---- collections root: ưu tiên ../data/collections
         Path collPreferred = cwd.resolveSibling("data").resolve("collections"); // ../data/collections
         Path collAlt       = cwd.resolve("data").resolve("collections");        // ./data/collections
         Path collectionsRoot = Files.isDirectory(collPreferred) ? collPreferred : collAlt;
@@ -58,7 +59,7 @@ public class PipelineService {
         System.out.println("[Pipeline] DB path    = " + dbPath);
         System.out.println("[Pipeline] Collections= " + collectionsRoot);
 
-        // SQLite của bạn nhận String path
+        // DB & migrate
         SQLite db = new SQLite(dbPath.toString());
         db.migrate();
 
@@ -74,7 +75,7 @@ public class PipelineService {
         AnalyticsRepo analyticsRepo = new AnalyticsRepo(db);
         RunsRepo runsRepo = new RunsRepo(db);
 
-        return new PipelineService(db, connectors, preprocess, postsRepo, runsRepo, nlp, analyticsRepo);
+        return new PipelineService(db, connectors, preprocess, postsRepo, runsRepo, analyticsRepo, nlp);
     }
 
     /* ---------- Fields ---------- */
@@ -84,30 +85,29 @@ public class PipelineService {
     private final PreprocessService preprocess;
     private final PostsRepo postsRepo;
     private final RunsRepo runsRepo;
-    private final NlpModel nlp;
     private final AnalyticsRepo analyticsRepo;
+    private final NlpModel nlp;
 
     public PipelineService(SQLite db,
                            List<SocialConnector> connectors,
                            PreprocessService preprocess,
                            PostsRepo postsRepo,
                            RunsRepo runsRepo,
-                           NlpModel nlp,
-                           AnalyticsRepo analyticsRepo) {
+                           AnalyticsRepo analyticsRepo,
+                           NlpModel nlp) {
         this.db = db;
         this.connectors = connectors;
         this.preprocess = preprocess;
         this.postsRepo = postsRepo;
         this.runsRepo = runsRepo;
-        this.nlp = nlp;
         this.analyticsRepo = analyticsRepo;
+        this.nlp = nlp;
     }
 
     /** Cho Dashboard lấy đúng repo/DB. */
     public AnalyticsRepo analyticsRepo() { return analyticsRepo; }
 
     /* ---------- Result ---------- */
-
     public static final class RunResult {
         public final String runId;
         public final int ingested;
@@ -124,40 +124,87 @@ public class PipelineService {
         Instant started = Instant.now();
         reflectStartRun(runId, rawKeyword, started);
 
+        // keywords sau chuẩn hoá tiếng Việt (không dấu)
         Set<String> keys = expandKeywords(rawKeyword);
+
+        // 1) Ingest
         List<RawPost> raw = fetchFromConnectors(keys);
         System.out.println("[Pipeline] raw from connectors = " + raw.size());
 
+        // 2) Preprocess + lọc theo keyword đã chuẩn hoá
         List<CleanPost> cleaned = raw.stream()
                 .map(preprocess::preprocess)
                 .filter(cp -> matchByKeyword(cp.textNorm(), keys))
                 .toList();
         System.out.println("[Pipeline] cleaned & matched   = " + cleaned.size());
 
-        // 1) Lưu posts
+        // 3) Lưu posts
         reflectSavePosts(cleaned, runId);
 
-        // 2) Sentiment
+        // 4) Sentiment cho từng post
         List<SentimentResult> sents = cleaned.stream()
                 .map(cp -> nlp.analyzeSentiment(cp.rawId(), cp.textNorm(), cp.lang(), cp.ts()))
                 .toList();
         saveSentimentsDirect(sents, runId);
 
-        // 3) Overall sentiment by day
+        // 5) Overall sentiment según ngày
         Map<Instant, Counts> daily = aggregateDaily(sents);
         for (var e : daily.entrySet()) {
             Instant bucket = e.getKey();
             Counts c = e.getValue();
-            reflectUpsertOverall(runId, bucket, c.pos, c.neg, c.neu);
+            // Direct call to AnalyticsRepo instead of reflection
+            analyticsRepo.upsertOverallSentiment(runId, bucket, c.pos, c.neg, c.neu);
         }
 
-        // 4) Damage & Relief (bài toán 2 & 3)
-        int dmgRows = saveDamageDirect(cleaned, runId);
-        int rlfRows = saveReliefDirect(cleaned, runId);
-        System.out.println("[Pipeline] damage rows = " + dmgRows + " | relief rows = " + rlfRows);
+        // 6) Damage, Relief + Task 3/4
+        int damageRows = 0, reliefRows = 0;
+        Map<String,int[]> aggTask3 = new LinkedHashMap<>();           // item -> [pos,neg,neu]
+        Map<String,int[]> aggTask4 = new LinkedHashMap<>();           // "day||item" -> [pos,neg,neu]
+        ZoneId utc = ZoneOffset.UTC;
 
-        // 5) Trends (bài toán 4)
-        aggregateTrends(cleaned, runId);
+        boolean hasLocal = (nlp instanceof LocalNlpModel);
+        for (int i = 0; i < cleaned.size(); i++) {
+            CleanPost cp = cleaned.get(i);
+            SentimentResult sr = sents.get(i);
+            int isPos = (sr.label() == SentimentLabel.pos) ? 1 : 0;
+            int isNeg = (sr.label() == SentimentLabel.neg) ? 1 : 0;
+            int isNeu = (sr.label() == SentimentLabel.neu) ? 1 : 0;
+
+            // bucket day cho Task 4
+            LocalDate d = sr.ts().atZone(utc).toLocalDate();
+            String dayIso = d.toString();
+
+            // --- detect damage ---
+            if (hasLocal) {
+                var types = ((LocalNlpModel) nlp).detectDamageTypes(cp.textNorm());
+                if (!types.isEmpty()) {
+                    damageRows += insertDamageRows(cp.rawId(), types, sr.ts(), runId);
+                }
+            }
+
+            // --- detect relief + Task 3 & 4 ---
+            List<String> items = hasLocal ? ((LocalNlpModel) nlp).detectReliefItems(cp.textNorm()) : List.of();
+            if (!items.isEmpty()) {
+                reliefRows += insertReliefRows(cp.rawId(), items, sr.ts(), runId);
+
+                for (String it : items) {
+                    // Task 3
+                    int[] v3 = aggTask3.computeIfAbsent(it, k -> new int[3]);
+                    v3[0] += isPos; v3[1] += isNeg; v3[2] += isNeu;
+
+                    // Task 4
+                    String key = dayIso + "||" + it;
+                    int[] v4 = aggTask4.computeIfAbsent(key, k -> new int[3]);
+                    v4[0] += isPos; v4[1] += isNeg; v4[2] += isNeu;
+                }
+            }
+        }
+
+        // Ghi Task 3/4
+        saveTask3(runId, aggTask3);
+        saveTask4(runId, aggTask4);
+
+        System.out.println("[Pipeline] damage rows = " + damageRows + " | relief rows = " + reliefRows);
 
         reflectFinishRun(runId, started, Instant.now(), cleaned.size(), sents.size());
         return new RunResult(runId, cleaned.size(), sents.size());
@@ -172,7 +219,7 @@ public class PipelineService {
         QuerySpec spec = buildQuerySpec(keys);
         List<RawPost> all = new ArrayList<>();
         for (var c : connectors) {
-            try (var stream = c.fetch(spec)) {              // stream AutoCloseable? (an toàn)
+            try (Stream<RawPost> stream = c.fetch(spec)) {
                 if (stream != null) stream.forEach(all::add);
             } catch (Exception ex) {
                 System.err.println("[WARN] Connector " + c.getClass().getSimpleName() + " failed: " + ex.getMessage());
@@ -248,7 +295,7 @@ public class PipelineService {
         throw new RuntimeException("Cannot build QuerySpec from keywords.");
     }
 
-    /* ---------- DB I/O trực tiếp cho sentiments & compat AnalyticsRepo ---------- */
+    /* ---------- DB I/O trực tiếp ---------- */
 
     private void saveSentimentsDirect(List<SentimentResult> sents, String runId) {
         if (sents.isEmpty()) return;
@@ -271,49 +318,107 @@ public class PipelineService {
         }
     }
 
-    private void reflectUpsertOverall(String runId, Instant bucketStart, int pos, int neg, int neu) {
-        // 1) upsertOverallSentiment(String, Instant, int,int,int)
-        try {
-            Method m = AnalyticsRepo.class.getMethod(
-                    "upsertOverallSentiment", String.class, Instant.class, int.class, int.class, int.class);
-            m.invoke(analyticsRepo, runId, bucketStart, pos, neg, neu);
-            return;
-        } catch (NoSuchMethodException ignore) { } catch (Exception e) { throw wrap(e); }
-
-        // 2) saveOverallSentiment(String, Instant, int,int,int)
-        try {
-            Method m = AnalyticsRepo.class.getMethod(
-                    "saveOverallSentiment", String.class, Instant.class, int.class, int.class, int.class);
-            m.invoke(analyticsRepo, runId, bucketStart, pos, neg, neu);
-            return;
-        } catch (NoSuchMethodException ignore) { } catch (Exception e) { throw wrap(e); }
-
-        // 3) Dùng String time
-        try {
-            Method m = AnalyticsRepo.class.getMethod(
-                    "upsertOverallSentiment", String.class, String.class, int.class, int.class, int.class);
-            m.invoke(analyticsRepo, runId, bucketStart.toString(), pos, neg, neu);
-            return;
-        } catch (NoSuchMethodException ignore) { } catch (Exception e) { throw wrap(e); }
-
-        // 4) Fallback: ghi trực tiếp
-        String sql = "INSERT OR REPLACE INTO overall_sentiment(run_id,bucket_start,pos,neg,neu) VALUES (?,?,?,?,?)";
-        try (Connection conn = db.connect();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, runId);
-            ps.setString(2, bucketStart.toString());
-            ps.setInt(3, pos);
-            ps.setInt(4, neg);
-            ps.setInt(5, neu);
-            ps.executeUpdate();
+    private int insertDamageRows(String postId, Collection<String> types, Instant ts, String runId) {
+        if (types == null || types.isEmpty()) return 0;
+        String sql = "INSERT INTO damage(id,type,ts,run_id) VALUES (?,?,?,?)";
+        int rows = 0;
+        try (var conn = db.connect(); var ps = conn.prepareStatement(sql)) {
+            conn.setAutoCommit(false);
+            for (String t : types) {
+                ps.setString(1, postId);
+                ps.setString(2, t);
+                ps.setString(3, ts.toString());
+                ps.setString(4, runId);
+                ps.addBatch(); rows++;
+            }
+            ps.executeBatch();
+            conn.commit();
         } catch (Exception e) {
-            throw new RuntimeException("upsert overall_sentiment failed: " + e.getMessage(), e);
+            System.err.println("[WARN] insertDamageRows: " + e.getMessage());
+        }
+        return rows;
+    }
+
+    private int insertReliefRows(String postId, Collection<String> items, Instant ts, String runId) {
+        if (items == null || items.isEmpty()) return 0;
+        String sql = "INSERT INTO relief_items(id,item,ts,run_id) VALUES (?,?,?,?)";
+        int rows = 0;
+        try (var conn = db.connect(); var ps = conn.prepareStatement(sql)) {
+            conn.setAutoCommit(false);
+            for (String it : items) {
+                ps.setString(1, postId);
+                ps.setString(2, it);
+                ps.setString(3, ts.toString());
+                ps.setString(4, runId);
+                ps.addBatch(); rows++;
+            }
+            ps.executeBatch();
+            conn.commit();
+        } catch (Exception e) {
+            System.err.println("[WARN] insertReliefRows: " + e.getMessage());
+        }
+        return rows;
+    }
+
+    private void saveTask3(String runId, Map<String,int[]> agg) {
+        if (agg.isEmpty()) return;
+        String del = "DELETE FROM relief_sentiment WHERE run_id = ?";
+        String ins = "INSERT INTO relief_sentiment(run_id,item,pos,neg,neu) VALUES (?,?,?,?,?)";
+        try (var conn = db.connect();
+             var pd = conn.prepareStatement(del);
+             var pi = conn.prepareStatement(ins)) {
+            conn.setAutoCommit(false);
+            pd.setString(1, runId);
+            pd.executeUpdate();
+            for (var e : agg.entrySet()) {
+                int[] v = e.getValue();
+                pi.setString(1, runId);
+                pi.setString(2, e.getKey());
+                pi.setInt(3, v[0]); // pos
+                pi.setInt(4, v[1]); // neg
+                pi.setInt(5, v[2]); // neu
+                pi.addBatch();
+            }
+            pi.executeBatch();
+            conn.commit();
+        } catch (Exception ex) {
+            System.err.println("[Task3] save failed: " + ex.getMessage());
         }
     }
 
-    private RuntimeException wrap(Exception e) {
-        return new RuntimeException(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+    private void saveTask4(String runId, Map<String,int[]> agg) {
+        if (agg.isEmpty()) return;
+        String del = "DELETE FROM relief_sentiment_daily WHERE run_id = ?";
+        String ins = "INSERT INTO relief_sentiment_daily(run_id,bucket_start,item,pos,neg,neu) VALUES (?,?,?,?,?,?)";
+        try (var conn = db.connect();
+             var pd = conn.prepareStatement(del);
+             var pi = conn.prepareStatement(ins)) {
+            conn.setAutoCommit(false);
+            pd.setString(1, runId);
+            pd.executeUpdate();
+            for (var e : agg.entrySet()) {
+                String key = e.getKey(); // "day||item"
+                String[] parts = key.split("\\|\\|", 2);
+                String day = parts[0];
+                String item = parts[1];
+                int[] v = e.getValue();
+                pi.setString(1, runId);
+                pi.setString(2, day);   // lưu "yyyy-MM-dd"
+                pi.setString(3, item);
+                pi.setInt(4, v[0]); // pos
+                pi.setInt(5, v[1]); // neg
+                pi.setInt(6, v[2]); // neu
+                pi.addBatch();
+            }
+            pi.executeBatch();
+            conn.commit();
+        } catch (Exception ex) {
+            System.err.println("[Task4] save failed: " + ex.getMessage());
+        }
     }
+
+    /* ---------- overall_sentiment: Direct API call ---------- */
+    // reflectUpsertOverall is now replaced with direct analyticsRepo.upsertOverallSentiment() call
 
     /* ---------- RunsRepo compat bằng reflection ---------- */
 
@@ -322,7 +427,7 @@ public class PipelineService {
             Method m = RunsRepo.class.getMethod("startRun", String.class, String.class, Instant.class);
             m.invoke(runsRepo, runId, keyword, started);
         } catch (NoSuchMethodException ignore) {
-            // not mandatory
+            // repo cũ không có method này → bỏ qua
         } catch (Exception e) {
             System.err.println("[WARN] startRun failed: " + e.getMessage());
         }
@@ -334,137 +439,15 @@ public class PipelineService {
                     String.class, Instant.class, Instant.class, int.class, int.class);
             m.invoke(runsRepo, runId, started, ended, ingested, analyzed);
         } catch (NoSuchMethodException ignore) {
-            // not mandatory
+            // repo cũ không có method này → bỏ qua
         } catch (Exception e) {
             System.err.println("[WARN] finishRun failed: " + e.getMessage());
         }
     }
 
     private void reflectSavePosts(List<CleanPost> cleaned, String runId) {
-        // Ưu tiên saveBatch(List<CleanPost>, String)
-        try {
-            Method m = PostsRepo.class.getMethod("saveBatch", List.class, String.class);
-            m.invoke(postsRepo, cleaned, runId);
-            return;
-        } catch (NoSuchMethodException ignore) { } catch (Exception e) { throw wrap(e); }
-
-        // Fallback: saveBatch(List<CleanPost>)
-        try {
-            Method m = PostsRepo.class.getMethod("saveBatch", List.class);
-            m.invoke(postsRepo, cleaned);
-        } catch (Exception e) {
-            throw new RuntimeException("PostsRepo.saveBatch failed: " + e.getMessage(), e);
-        }
+        // Đặt runId trước khi gọi saveBatch
+        postsRepo.attachRun(runId);
+        postsRepo.saveBatch(cleaned);
     }
-
-    /* ---------- NEW: Bài toán 2,3,4 ghi trực tiếp DB ---------- */
-
-    private int saveDamageDirect(List<CleanPost> cleaned, String runId) {
-        if (cleaned.isEmpty()) return 0;
-        if (!(nlp instanceof LocalNlpModel model)) return 0;
-
-        String sql = "INSERT INTO damage(id,type,ts,run_id) VALUES (?,?,?,?)";
-        int rows = 0;
-        try (var conn = db.connect(); var ps = conn.prepareStatement(sql)) {
-            conn.setAutoCommit(false);
-            for (var cp : cleaned) {
-                var types = model.detectDamageTypes(cp.textNorm());
-                for (String t : types) {
-                    ps.setString(1, cp.rawId());
-                    ps.setString(2, t);
-                    ps.setString(3, cp.ts().toString());
-                    ps.setString(4, runId);
-                    ps.addBatch(); rows++;
-                }
-            }
-            ps.executeBatch();
-            conn.commit();
-        } catch (Exception e) {
-            System.err.println("[WARN] saveDamageDirect: " + e.getMessage());
-        }
-        return rows;
-    }
-
-    private int saveReliefDirect(List<CleanPost> cleaned, String runId) {
-        if (cleaned.isEmpty()) return 0;
-        if (!(nlp instanceof LocalNlpModel model)) return 0;
-
-        String sql = "INSERT INTO relief_items(id,item,ts,run_id) VALUES (?,?,?,?)";
-        int rows = 0;
-        try (var conn = db.connect(); var ps = conn.prepareStatement(sql)) {
-            conn.setAutoCommit(false);
-            for (var cp : cleaned) {
-                var items = model.detectReliefItems(cp.textNorm());
-                for (String it : items) {
-                    ps.setString(1, cp.rawId());
-                    ps.setString(2, it);
-                    ps.setString(3, cp.ts().toString());
-                    ps.setString(4, runId);
-                    ps.addBatch(); rows++;
-                }
-            }
-            ps.executeBatch();
-            conn.commit();
-        } catch (Exception e) {
-            System.err.println("[WARN] saveReliefDirect: " + e.getMessage());
-        }
-        return rows;
-    }
-
-    private void aggregateTrends(List<CleanPost> cleaned, String runId) {
-        if (cleaned.isEmpty()) return;
-        if (!(nlp instanceof LocalNlpModel model)) return;
-
-        Map<String, Map<String,Integer>> tokenDaily = new LinkedHashMap<>();
-        Map<String, Map<String,Integer>> hashtagDaily = new LinkedHashMap<>();
-        var utc = ZoneOffset.UTC;
-
-        for (var cp : cleaned) {
-            String day = cp.ts().atZone(utc).toLocalDate().atStartOfDay(utc).toInstant().toString();
-
-            for (String tok : model.tokenizeForTrends(cp.textNorm())) {
-                if (tok.startsWith("#")) {
-                    hashtagDaily.computeIfAbsent(day, k -> new HashMap<>()).merge(tok, 1, Integer::sum);
-                } else {
-                    tokenDaily.computeIfAbsent(day, k -> new HashMap<>()).merge(tok, 1, Integer::sum);
-                }
-            }
-        }
-
-        String sqlTok = "INSERT OR REPLACE INTO keyword_counts(run_id,bucket_start,token,cnt) VALUES (?,?,?,?)";
-        String sqlHash = "INSERT OR REPLACE INTO hashtag_counts(run_id,bucket_start,tag,cnt) VALUES (?,?,?,?)";
-
-        try (var conn = db.connect();
-             var pst = conn.prepareStatement(sqlTok);
-             var psh = conn.prepareStatement(sqlHash)) {
-            conn.setAutoCommit(false);
-
-            for (var e : tokenDaily.entrySet()) {
-                String day = e.getKey();
-                for (var t : e.getValue().entrySet()) {
-                    pst.setString(1, runId);
-                    pst.setString(2, day);
-                    pst.setString(3, t.getKey());
-                    pst.setInt(4, t.getValue());
-                    pst.addBatch();
-                }
-            }
-            for (var e : hashtagDaily.entrySet()) {
-                String day = e.getKey();
-                for (var t : e.getValue().entrySet()) {
-                    psh.setString(1, runId);
-                    psh.setString(2, day);
-                    psh.setString(3, t.getKey());
-                    psh.setInt(4, t.getValue());
-                    psh.addBatch();
-                }
-            }
-            pst.executeBatch();
-            psh.executeBatch();
-            conn.commit();
-        } catch (Exception ex) {
-            System.err.println("[WARN] aggregateTrends: " + ex.getMessage());
-        }
-    }
-
 }
