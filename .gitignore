@@ -9,3 +9,5 @@ out/
 .idea/
 # Dist
 app-dist/
+/config/secret/
+/**/*.apikey

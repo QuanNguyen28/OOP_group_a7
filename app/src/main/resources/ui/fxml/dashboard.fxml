@@ -3,12 +3,10 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.chart.*?>
 
-<!-- Modern tabbed dashboard: each task in its own Tab -->
 <BorderPane xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="app.controller.DashboardController">
 
-    <!-- Filters / global controls -->
     <top>
         <VBox spacing="8" styleClass="page">
             <HBox spacing="12">
@@ -28,21 +26,19 @@
                 <Spinner fx:id="topNSpinner" prefWidth="90"/>
 
                 <Button fx:id="btnRefresh" text="Refresh" styleClass="toolbar-btn"/>
-                <Button fx:id="btnExport" text="Export CSV" styleClass="toolbar-btn"/>
+                <Button fx:id="btnExport"  text="Export CSV" styleClass="toolbar-btn"/>
             </HBox>
-
             <Label fx:id="statusLabel" text="Ready"/>
         </VBox>
     </top>
 
-    <!-- Center content: 4 Tabs = 4 tasks -->
     <center>
         <TabPane tabClosingPolicy="UNAVAILABLE" styleClass="primary-tabs">
             <tabs>
                 <!-- (1) Sentiment -->
                 <Tab text="Sentiment">
                     <content>
-                        <VBox spacing="8" styleClass="page">
+                        <VBox spacing="10" styleClass="page">
                             <Label fx:id="overallSubtitle" text="Loading..."/>
                             <StackPane styleClass="card">
                                 <LineChart fx:id="overallChart">
@@ -50,6 +46,16 @@
                                     <yAxis><NumberAxis label="Posts"/></yAxis>
                                 </LineChart>
                             </StackPane>
+
+                            <TitledPane text="Insight (LLM)">
+                                <VBox spacing="8" style="-fx-padding: 8;">
+                                    <HBox spacing="8">
+                                        <Button fx:id="btnOverallSumm" text="Summarize Sentiment"/>
+                                        <Label text="(tự động dùng from/to nếu đặt)"/>
+                                    </HBox>
+                                    <TextArea fx:id="overallInsightBox" prefRowCount="6" wrapText="true"/>
+                                </VBox>
+                            </TitledPane>
                         </VBox>
                     </content>
                 </Tab>
@@ -57,10 +63,9 @@
                 <!-- (2) Damage -->
                 <Tab text="Damage">
                     <content>
-                        <VBox spacing="8" styleClass="page">
+                        <VBox spacing="10" styleClass="page">
                             <HBox spacing="8">
                                 <Label text="View:"/>
-                                <!-- ComboBox trống; items do Controller thêm -->
                                 <ComboBox fx:id="damageView" prefWidth="180"/>
                             </HBox>
                             <StackPane styleClass="card">
@@ -69,6 +74,13 @@
                                     <yAxis><NumberAxis label="Count"/></yAxis>
                                 </BarChart>
                             </StackPane>
+
+                            <TitledPane text="Insight (LLM)">
+                                <VBox spacing="8" style="-fx-padding: 8;">
+                                    <Button fx:id="btnDamageSumm" text="Summarize Damage"/>
+                                    <TextArea fx:id="damageInsightBox" prefRowCount="6" wrapText="true"/>
+                                </VBox>
+                            </TitledPane>
                         </VBox>
                     </content>
                 </Tab>
@@ -76,48 +88,62 @@
                 <!-- (3) Relief -->
                 <Tab text="Relief">
                     <content>
-                        <StackPane styleClass="card">
-                            <PieChart fx:id="reliefPie"/>
-                        </StackPane>
+                        <VBox spacing="10" styleClass="page">
+                            <StackPane styleClass="card">
+                                <PieChart fx:id="reliefPie"/>
+                            </StackPane>
+
+                            <TitledPane text="Insight (LLM)">
+                                <VBox spacing="8" style="-fx-padding: 8;">
+                                    <Button fx:id="btnReliefSumm" text="Summarize Relief"/>
+                                    <TextArea fx:id="reliefInsightBox" prefRowCount="6" wrapText="true"/>
+                                </VBox>
+                            </TitledPane>
+                        </VBox>
                     </content>
                 </Tab>
 
-                <!-- ============== Task 3: Satisfaction by Category ============== -->
+                <!-- Task 3 -->
                 <Tab text="Task 3: Satisfaction">
-                <content>
-                    <VBox spacing="10" alignment="CENTER" style="-fx-padding: 10;">
-                        <Label text="Mức độ hài lòng theo từng loại hàng cứu trợ" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                    <content>
+                        <VBox spacing="10" style="-fx-padding: 10;">
+                            <Label text="Mức độ hài lòng theo từng loại hàng cứu trợ" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <StackedBarChart fx:id="task3Chart">
+                                <xAxis><CategoryAxis label="Loại hàng cứu trợ"/></xAxis>
+                                <yAxis><NumberAxis label="Số bài viết"/></yAxis>
+                            </StackedBarChart>
 
-                        <!-- fx:id phải trùng với biến task3Chart trong Controller -->
-                        <StackedBarChart fx:id="task3Chart">
-                            <xAxis>
-                                <CategoryAxis label="Loại hàng cứu trợ" />
-                            </xAxis>
-                            <yAxis>
-                                <NumberAxis label="Số lượng bài viết" />
-                            </yAxis>
-                        </StackedBarChart>
-                    </VBox>
-                </content>
+                            <TitledPane text="Insight (LLM)">
+                                <VBox spacing="8" style="-fx-padding: 8;">
+                                    <Button fx:id="btnTask3Summ" text="Summarize Task 3"/>
+                                    <TextArea fx:id="task3InsightBox" prefRowCount="6" wrapText="true"/>
+                                </VBox>
+                            </TitledPane>
+                        </VBox>
+                    </content>
                 </Tab>
 
-                <!-- ============== Task 4: Sentiment over Time per Category ============== -->
-                <Tab text="Task 4: Trends">
-                <content>
-                    <VBox spacing="10" alignment="CENTER" style="-fx-padding: 10;">
-                        <Label text="Diễn biến tâm lý theo thời gian (Trung bình cộng)" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                <!-- Task 4 -->
+                <Tab text="Task 4: Trends (per Category)">
+                    <content>
+                        <VBox spacing="10" style="-fx-padding: 10;">
+                            <Label text="Diễn biến tâm lý theo thời gian (trung bình)" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <LineChart fx:id="task4Chart">
+                                <xAxis><CategoryAxis label="Ngày"/></xAxis>
+                                <yAxis><NumberAxis label="Điểm (-1..1)" lowerBound="-1" upperBound="1" autoRanging="false"/></yAxis>
+                            </LineChart>
 
-                        <!-- fx:id phải trùng với biến task4Chart trong Controller -->
-                        <LineChart fx:id="task4Chart">
-                            <xAxis>
-                                <CategoryAxis label="Ngày" />
-                            </xAxis>
-                            <yAxis>
-                                <NumberAxis label="Điểm cảm xúc (-1 đến 1)" lowerBound="-1" upperBound="1" autoRanging="false"/>
-                            </yAxis>
-                        </LineChart>
-                    </VBox>
-                </content>
+                            <TitledPane text="Insight (LLM)">
+                                <VBox spacing="8" style="-fx-padding: 8;">
+                                    <HBox spacing="8">
+                                        <Button fx:id="btnTask4Summ" text="Summarize Task 4 (use from/to)"/>
+                                        <Label text="Sẽ dùng khoảng thời gian đang chọn ở header"/>
+                                    </HBox>
+                                    <TextArea fx:id="task4InsightBox" prefRowCount="6" wrapText="true"/>
+                                </VBox>
+                            </TitledPane>
+                        </VBox>
+                    </content>
                 </Tab>
             </tabs>
         </TabPane>

@@ -8,6 +8,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.TextArea;
+import app.model.service.insight.InsightService;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -51,10 +53,26 @@ public class DashboardController {
     @FXML private DatePicker dpTo;
     @FXML private Button btnRefreshTask4;
 
+    // Summaries + Summarize buttons (optional if not present in FXML they will be null)
+    @FXML private TextArea txtOverallSummary;
+    @FXML private TextArea txtDamageSummary;
+    @FXML private TextArea txtReliefSummary;
+    @FXML private TextArea txtTask3Summary;
+    @FXML private TextArea txtTask4Summary;
+
+    @FXML private Button btnSummarizeOverall;
+    @FXML private Button btnSummarizeDamage;
+    @FXML private Button btnSummarizeRelief;
+    @FXML private Button btnSummarizeTask3;
+    @FXML private Button btnSummarizeTask4;
+
     // ====== (B) State ======
     private String runId;
     private Path dbPath;                 // tự dò ../data/app.db hoặc ./data/app.db
     private AnalyticsRepo analyticsRepo; // optional: nếu RunController có set, vẫn nhận, nhưng controller không phụ thuộc repo
+
+    // LLM Insight service (optional)
+    private InsightService insights;
 
     // Thêm đối tượng NLP Model để phân tích trực tiếp
     private final LocalNlpModel nlpModel = new LocalNlpModel();
@@ -84,6 +102,10 @@ public class DashboardController {
             return;
         }
         this.dbPath = resolveDbPath();
+
+        // Initialize insight (LLM) service and wire summary buttons
+        this.insights = new InsightService(dbPath);
+        wireSummaryButtons();
 
         // Overview: tổng hợp pos/neg/neu theo ngày (từ overall_sentiment)
         loadOverview();
@@ -426,6 +448,49 @@ public class DashboardController {
         }
         loadTask3();
         loadTask4();
+    }
+
+    /** Wire summarize buttons to LLM-based insights (if the nodes exist in FXML). */
+    private void wireSummaryButtons() {
+        if (insights == null) return;
+
+        if (btnSummarizeOverall != null) {
+            btnSummarizeOverall.setOnAction(e -> {
+                String s = insights.summarizeSentiment(this.runId);
+                if (txtOverallSummary != null) txtOverallSummary.setText(s);
+            });
+        }
+        if (btnSummarizeDamage != null) {
+            btnSummarizeDamage.setOnAction(e -> {
+                String s = insights.summarizeDamage(this.runId);
+                if (txtDamageSummary != null) txtDamageSummary.setText(s);
+            });
+        }
+        if (btnSummarizeRelief != null) {
+            btnSummarizeRelief.setOnAction(e -> {
+                String s = insights.summarizeRelief(this.runId);
+                if (txtReliefSummary != null) txtReliefSummary.setText(s);
+            });
+        }
+        if (btnSummarizeTask3 != null) {
+            btnSummarizeTask3.setOnAction(e -> {
+                String s = insights.summarizeTask3(this.runId);
+                if (txtTask3Summary != null) txtTask3Summary.setText(s);
+            });
+        }
+        if (btnSummarizeTask4 != null) {
+            btnSummarizeTask4.setOnAction(e -> {
+                java.time.LocalDate from = dpFrom != null ? dpFrom.getValue() : null;
+                java.time.LocalDate to   = dpTo   != null ? dpTo.getValue()   : null;
+                if (from == null || to == null) {
+                    java.time.LocalDate[] r = queryOverallDateRange(this.runId);
+                    if (from == null) from = (r[0] != null ? r[0] : java.time.LocalDate.now().minusDays(30));
+                    if (to   == null) to   = (r[1] != null ? r[1] : java.time.LocalDate.now());
+                }
+                String s = insights.summarizeTask4(this.runId, from, to);
+                if (txtTask4Summary != null) txtTask4Summary.setText(s);
+            });
+        }
     }
 
     // ====== (J) Optional: gọi tự động khi FXML load xong, tránh NPE nếu chưa set run ======
