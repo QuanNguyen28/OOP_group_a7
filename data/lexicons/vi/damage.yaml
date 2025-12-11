@@ -1,23 +1,41 @@
 damage_types:
-  infrastructure:
-    - "duong hu hong"
-    - "cau sap"
-    - "mat dien"
-    - "dien cap"
-    - "giao thong gian doan"
-    - "ket xe"
-    - "sap cau"
-    - "do nat ha tang"
-  housing:
+  nguoi_bi_anh_huong:
+    - "nguoi chet"
+    - "tu vong"
+    - "mat tich"
+    - "bi thuong"
+    - "so tan"
+    - "nan nhan"
+
+  gian_doan_kinh_te:
+    - "gian doan san xuat"
+    - "gian doan giao thong"
+    - "tam ngung kinh doanh"
+    - "nghi hoc"
+    - "cam bien"
+
+  nha_toa_nha_hu_hong:
     - "nha sap"
-    - "mai ton bay"
-    - "do nat"
+    - "toc mai nha"
     - "vo cua kinh"
+    - "do nat nha cua"
     - "thiet hai nha cua"
-    - "do mai nha"
-  flood:
+
+  tai_san_ca_nhan_mat:
+    - "mat trang tai san"
+    - "mat xe may"
+    - "mat o to"
+    - "mat gia suc"
+
+  co_so_ha_tang_hu_hong:
+    - "cau sap"
+    - "duong hu hong"
+    - "mat dien dien cap"
+    - "do nat ha tang"
+    - "sap cau"
+
+  khac:
     - "ngap sau"
     - "nuoc dang cao"
     - "lu lut"
-    - "ngap nuoc"
     - "ngap duong"

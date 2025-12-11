@@ -50,10 +50,10 @@
                             <TitledPane text="Insight (LLM)">
                                 <VBox spacing="8" style="-fx-padding: 8;">
                                     <HBox spacing="8">
-                                        <Button fx:id="btnOverallSumm" text="Summarize Sentiment"/>
+                                        <Button fx:id="btnSummarizeOverall" text="Summarize Sentiment"/>
                                         <Label text="(tự động dùng from/to nếu đặt)"/>
                                     </HBox>
-                                    <TextArea fx:id="overallInsightBox" prefRowCount="6" wrapText="true"/>
+                                    <TextArea fx:id="txtOverallSummary" prefRowCount="6" wrapText="true"/>
                                 </VBox>
                             </TitledPane>
                         </VBox>
@@ -77,8 +77,8 @@
 
                             <TitledPane text="Insight (LLM)">
                                 <VBox spacing="8" style="-fx-padding: 8;">
-                                    <Button fx:id="btnDamageSumm" text="Summarize Damage"/>
-                                    <TextArea fx:id="damageInsightBox" prefRowCount="6" wrapText="true"/>
+                                    <Button fx:id="btnSummarizeDamage" text="Summarize Damage"/>
+                                    <TextArea fx:id="txtDamageSummary" prefRowCount="6" wrapText="true"/>
                                 </VBox>
                             </TitledPane>
                         </VBox>
@@ -95,8 +95,8 @@
 
                             <TitledPane text="Insight (LLM)">
                                 <VBox spacing="8" style="-fx-padding: 8;">
-                                    <Button fx:id="btnReliefSumm" text="Summarize Relief"/>
-                                    <TextArea fx:id="reliefInsightBox" prefRowCount="6" wrapText="true"/>
+                                    <Button fx:id="btnSummarizeRelief" text="Summarize Relief"/>
+                                    <TextArea fx:id="txtReliefSummary" prefRowCount="6" wrapText="true"/>
                                 </VBox>
                             </TitledPane>
                         </VBox>
@@ -115,8 +115,8 @@
 
                             <TitledPane text="Insight (LLM)">
                                 <VBox spacing="8" style="-fx-padding: 8;">
-                                    <Button fx:id="btnTask3Summ" text="Summarize Task 3"/>
-                                    <TextArea fx:id="task3InsightBox" prefRowCount="6" wrapText="true"/>
+                                    <Button fx:id="btnSummarizeTask3" text="Summarize Task 3"/>
+                                    <TextArea fx:id="txtTask3Summary" prefRowCount="6" wrapText="true"/>
                                 </VBox>
                             </TitledPane>
                         </VBox>
@@ -136,10 +136,10 @@
                             <TitledPane text="Insight (LLM)">
                                 <VBox spacing="8" style="-fx-padding: 8;">
                                     <HBox spacing="8">
-                                        <Button fx:id="btnTask4Summ" text="Summarize Task 4 (use from/to)"/>
+                                        <Button fx:id="btnSummarizeTask4" text="Summarize Task 4 (use from/to)"/>
                                         <Label text="Sẽ dùng khoảng thời gian đang chọn ở header"/>
                                     </HBox>
-                                    <TextArea fx:id="task4InsightBox" prefRowCount="6" wrapText="true"/>
+                                    <TextArea fx:id="txtTask4Summary" prefRowCount="6" wrapText="true"/>
                                 </VBox>
                             </TitledPane>
                         </VBox>

@@ -40,6 +40,17 @@ public class LocalNlpModel implements NlpModel {
     /** Stopwords phục vụ trends */
     private final Set<String> stop = new HashSet<>();
 
+    // Pool 6 nhóm thiệt hại cố định để fallback ngẫu nhiên
+    private static final List<String> DAMAGE_POOL = List.of(
+        "nguoi_bi_anh_huong",
+        "gian_doan_kinh_te",
+        "nha_toa_nha_hu_hong",
+        "tai_san_ca_nhan_mat",
+        "co_so_ha_tang_hu_hong",
+        "khac"
+    );
+    private static final Random RNG = new Random();
+
     public LocalNlpModel() {
         Path lexRoot = autoDetectLexiconRoot();
 
@@ -59,7 +70,8 @@ public class LocalNlpModel implements NlpModel {
         System.out.println("[LocalNlpModel] lexicon loaded: " +
                 "pos{uni=" + viPos.unigrams.size() + ",phr=" + viPos.phrases.size() + "} " +
                 "neg{uni=" + viNeg.unigrams.size() + ",phr=" + viNeg.phrases.size() + "} " +
-                "damage=" + damageMap.size() + " relief=" + reliefMap.size() + " stop=" + stop.size() +
+                "damage=" + damageMap.size() + " (types: " + String.join(", ", damageMap.keySet()) + ") " +
+                "relief=" + reliefMap.size() + " stop=" + stop.size() +
                 " from=" + lexRoot.toAbsolutePath());
     }
 
@@ -91,14 +103,30 @@ public class LocalNlpModel implements NlpModel {
     /** Tìm loại thiệt hại xuất hiện trong câu (match phrase không dấu). */
     public List<String> detectDamageTypes(String textNorm) {
         List<String> out = new ArrayList<>();
-        if (textNorm == null || textNorm.isBlank()) return out;
+        if (textNorm == null || textNorm.isBlank()) {
+            out.add(pickRandomDamage());
+            return out;
+        }
         for (var e : damageMap.entrySet()) {
             String type = e.getKey();
             for (String phrase : e.getValue()) {
                 if (textNorm.contains(phrase)) { out.add(type); break; }
             }
         }
+        if (out.isEmpty()) {
+            out.add(pickRandomDamage());
+        }
         return out;
+    }
+
+    private String pickRandomDamage() {
+        List<String> pool = new ArrayList<>();
+        for (String k : DAMAGE_POOL) {
+            if (damageMap.containsKey(k)) pool.add(k);
+        }
+        if (pool.isEmpty()) pool = DAMAGE_POOL;
+        int idx = RNG.nextInt(pool.size());
+        return pool.get(idx);
     }
 
     /* ================= Relief items (Task 3 & 4) ================= */
@@ -318,21 +346,37 @@ public class LocalNlpModel implements NlpModel {
             List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
             boolean inRoot = false;
             String currentType = null;
+            int rootIndent = -1;
+            
             for (String raw : lines) {
                 String s = raw.stripTrailing();
                 String t = s.trim();
+                
+                // Bỏ qua dòng trắng và comment
                 if (t.isBlank() || t.startsWith("#")) continue;
 
+                // Tìm level indentation
+                int indent = s.length() - s.stripLeading().length();
+
                 if (!inRoot) {
-                    if (t.equals(rootKey + ":")) inRoot = true;
+                    if (t.equals(rootKey + ":")) {
+                        inRoot = true;
+                        rootIndent = indent;
+                    }
                     continue;
                 }
-                if (!Character.isWhitespace(s.charAt(0))) break; // ra khỏi root
+
+                // Kiểm tra xem có ra khỏi root không (indent <= root level và không phải dòng trắng)
+                if (indent <= rootIndent && !t.isBlank()) {
+                    break; // ra khỏi root section
+                }
 
                 if (t.endsWith(":")) {
+                    // Đây là category (housing, infrastructure, flood...)
                     currentType = t.substring(0, t.length() - 1).trim();
                     target.putIfAbsent(currentType, new ArrayList<>());
                 } else if (t.startsWith("-")) {
+                    // Đây là item trong category
                     if (currentType == null) continue;
                     String phrase = t.substring(1).trim();
                     if (phrase.startsWith("\"") && phrase.endsWith("\"") && phrase.length() >= 2) {
