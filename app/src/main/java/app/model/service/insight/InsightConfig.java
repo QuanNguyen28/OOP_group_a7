@@ -16,7 +16,7 @@ public final class InsightConfig {
             "gemini-2.5-flash",
             "gen-lang-client-0294487240",
             "us-central1",
-            "/Users/hoangquannguyen/Documents/Code./OOP/OOP_group_a7/app/config/sa.json"
+            "/Users/hoangquannguyen/Downloads/sa.json"
     );
 
     // Nếu muốn chạy offline thử UI (không gọi LLM)

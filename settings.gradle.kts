@@ -7,3 +7,4 @@ pluginManagement {
 
 rootProject.name = "OOP_group_a7"
 include(":app")
+include(":collector")

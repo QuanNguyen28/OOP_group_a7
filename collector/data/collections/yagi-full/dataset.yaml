@@ -1,0 +1,10 @@
+version: 1
+name: 2024-09-collector.jsonl
+files:
+  - path: 2024-09-collector.jsonl
+    format: jsonl
+keywords:
+  - "yagi"
+  - "#yagi"
+  - "bao yagi"
+  - "#bao yagi"
