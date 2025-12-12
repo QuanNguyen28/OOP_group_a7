@@ -28,6 +28,7 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
   runtimeOnly("org.slf4j:slf4j-simple:2.0.13")
   implementation("com.google.auth:google-auth-library-oauth2-http:1.23.0")
+  implementation(project(":collector"))
 }
 
 tasks.test { useJUnitPlatform() }

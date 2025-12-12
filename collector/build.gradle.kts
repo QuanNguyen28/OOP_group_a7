@@ -3,17 +3,22 @@ plugins {
 }
 
 java {
-    toolchain { languageVersion.set(JavaLanguageVersion.of(21)) }
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // JSON (Gson) cho JSONL writer
+    implementation("com.google.code.gson:gson:2.11.0")
+    // Jackson cho parsing JSON từ YouTube API
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
 }
 
 application {
-    mainClass.set("app.collector.Main")
-}
-
-repositories { mavenCentral() }
-
-dependencies {
-    // Không bắt buộc thêm lib JSON để giữ gọn nhẹ; dùng HttpClient + parser tối giản.
-    // Nếu muốn chắc chắn hơn, thêm Jackson:
-    // implementation("com.fasterxml.jackson.core:jackson-databind:2.18.1")
+    mainClass.set("collector.cli.CollectorCLI")
 }

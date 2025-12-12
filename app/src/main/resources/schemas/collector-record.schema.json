@@ -1,0 +1,15 @@
+{
+  "$schema":"http://json-schema.org/draft-07/schema#",
+  "title":"CollectorRecord",
+  "type":"object",
+  "required":["id","text","lang","createdAt","platform","userLoc","hashtags"],
+  "properties":{
+    "id":{"type":"string"},
+    "text":{"type":"string"},
+    "lang":{"type":"string"},
+    "createdAt":{"type":"string","format":"date-time"},
+    "platform":{"type":"string"},
+    "userLoc":{"type":"string"},
+    "hashtags":{"type":"array","items":{"type":"string"}}
+  }
+}
