@@ -20,13 +20,19 @@
                            promptText="ví dụ: yagi, ragasa, cuu tro"
                            prefWidth="280"/>
 
-                <Button fx:id="runBtn" text="Run Ingest" onAction="#onRunIngest"/>
-                <Button text="Open Dashboard" onAction="#onOpenLastDashboard"/>
-
+                <Button fx:id="runBtn" text="Run Ingest" onAction="#onRunIngest">
+                    <tooltip><Tooltip text="Nạp &amp; phân tích dữ liệu theo từ khóa"/></tooltip>
+                </Button>
+                <Button text="Open Dashboard" onAction="#onOpenLastDashboard">
+                    <tooltip><Tooltip text="Mở dashboard gần nhất"/></tooltip>
+                </Button>
+                <Button text="Collector…" onAction="#onOpenCollector">
+                    <tooltip><Tooltip text="Mở cửa sổ thu thập dữ liệu (news, YouTube, Reddit)"/></tooltip>
+                </Button>
                 <!-- Spacer giãn sang phải: dùng thuộc tính HBox.hgrow -->
                 <Pane HBox.hgrow="ALWAYS"/>
 
-                <Label text="DB: data/app.db" style="-fx-opacity: 0.7;"/>
+                <Label fx:id="dbLabel" text="DB: …" style="-fx-opacity: 0.7;"/>
             </items>
         </ToolBar>
     </top>

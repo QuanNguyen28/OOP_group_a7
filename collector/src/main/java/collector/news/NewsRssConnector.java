@@ -1,59 +1,96 @@
 package collector.news;
 
-import collector.api.QuerySpec;
-import collector.api.SourceConnector;
+import collector.core.QuerySpec;
 import collector.core.RawPost;
-import collector.core.Util;
+import collector.core.SourceConnector;
 
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.*;
+import java.nio.charset.StandardCharsets;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Stream;
 
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.w3c.dom.*;
+
 public final class NewsRssConnector implements SourceConnector {
-    @Override public String id() { return "news-rss"; }
+
+    private final HttpClient http = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
+
+    @Override public String id()   { return "news"; }
+    @Override public String name() { return "Google News RSS"; }
 
     @Override
     public Stream<RawPost> fetch(QuerySpec spec) throws Exception {
         List<RawPost> out = new ArrayList<>();
+        int limit = spec.limit();
+        Instant from = spec.from();
+        Instant to   = spec.to();
+
         for (String kw : spec.keywords()) {
-            String url = "https://news.google.com/rss/search?q=" + Util.urlEnc(kw) + "&hl=vi&gl=VN&ceid=VN:vi";
-            String xml = Util.httpGet(url, 15000);
-            Document doc = Util.parseXml(xml);
+            if (out.size() >= limit) break;
+
+            String url = buildRssUrl(kw);
+            HttpRequest req = HttpRequest.newBuilder(URI.create(url)).GET().build();
+            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() != 200) {
+                System.out.println("[News] HTTP " + resp.statusCode() + " for " + url);
+                continue;
+            }
+
+            Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                    .parse(new java.io.ByteArrayInputStream(resp.body().getBytes(StandardCharsets.UTF_8)));
+            doc.getDocumentElement().normalize();
 
             NodeList items = doc.getElementsByTagName("item");
-            for (int i = 0; i < items.getLength(); i++) {
-                var item = items.item(i);
-                var title = Util.firstTag(item, "title");
-                var link  = Util.firstTag(item, "link");
-                var pub   = Util.firstTag(item, "pubDate"); // RFC822
+            for (int i = 0; i < items.getLength() && out.size() < limit; i++) {
+                Element item = (Element) items.item(i);
 
-                Instant ts = pub != null ? Util.parseRfc822(pub) : null;
-                if (ts == null) ts = Instant.now();
-                if (spec.from() != null && ts.isBefore(spec.from())) continue;
-                if (spec.to()   != null && ts.isAfter(spec.to()))   continue;
+                String title = firstTag(item, "title");
+                String link  = firstTag(item, "link");
+                String pub   = firstTag(item, "pubDate"); // RFC_1123
 
-                String id = "news:" + Util.sha1(link == null ? (title == null ? String.valueOf(i) : title) : link);
+                Instant ts = Instant.now();
+                if (pub != null && !pub.isBlank()) {
+                    try { ts = ZonedDateTime.parse(pub, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant(); }
+                    catch (Exception ignore) {}
+                }
+
+                if (from != null && ts.isBefore(from)) continue;
+                if (to   != null && ts.isAfter(to))   continue;
+
                 String text = (title == null ? "" : title);
-                String lk = (link == null ? "" : link);
+                String id   = "news:" + Objects.hash(kw, link, ts.toString());
 
                 out.add(new RawPost(
                         id,
                         "news",
                         text,
                         ts,
-                        "vi",
-                        lk,
-                        List.of(kw),
-                        id()
+                        "",
+                        link == null ? "" : link,
+                        List.of(),
+                        "news-rss"
                 ));
-
-                if (out.size() >= spec.limit()) break;
             }
         }
         return out.stream();
+    }
+
+    private static String buildRssUrl(String kw) {
+        String q = URLEncoder.encode(kw, StandardCharsets.UTF_8);
+        return "https://news.google.com/rss/search?q=" + q + "&hl=vi&gl=VN&ceid=VN:vi";
+    }
+
+    private static String firstTag(Element parent, String tag) {
+        NodeList nl = parent.getElementsByTagName(tag);
+        if (nl == null || nl.getLength() == 0) return null;
+        Node n = nl.item(0);
+        return n.getTextContent();
     }
 }

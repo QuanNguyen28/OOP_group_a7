@@ -2,71 +2,45 @@ package collector.cli;
 
 import collector.api.CollectorService;
 
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 
-public final class CollectorCLI {
-    public static void main(String[] args) {
-        Map<String, String> arg = parseArgs(args);
+public class CollectorCLI {
+    public static void main(String[] args) throws Exception {
+        Map<String,String> arg = parse(args);
 
-        String kwRaw = arg.getOrDefault("--keywords", "");
-        List<String> keywords = Arrays.stream(kwRaw.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
+        List<String> keywords = Arrays.stream(arg.getOrDefault("--keywords", "").split(","))
+                .map(String::trim).filter(s->!s.isBlank()).toList();
+        List<String> sources  = Arrays.stream(arg.getOrDefault("--sources", "").split(","))
+                .map(String::trim).filter(s->!s.isBlank()).toList();
+        String collection     = arg.getOrDefault("--collection", "default");
+        Instant from          = arg.containsKey("--from") ? Instant.parse(arg.get("--from")) : null;
+        Instant to            = arg.containsKey("--to")   ? Instant.parse(arg.get("--to"))   : null;
+        int limit             = Integer.parseInt(arg.getOrDefault("--limit", "300"));
+        Path saveDir          = Path.of(arg.getOrDefault("--saveDir", "collector/data/collections"));
+        String ytKeyUI        = arg.getOrDefault("--yt.apiKey", null);
 
-        Instant from       = CollectorService.parseInstant(arg.get("--from"));
-        Instant to         = CollectorService.parseInstant(arg.get("--to"));
-        int limit          = parseIntSafe(arg.get("--limit"), 1000);
-        String collection  = arg.getOrDefault("--collection", "raw");
-        List<String> sources = Arrays.stream(arg.getOrDefault("--sources", "news,youtube").split(","))
-                .map(String::trim).filter(s -> !s.isEmpty()).toList();
+        System.out.println("[Collector] keywords=" + String.join(", ", keywords)
+                + " | sources=" + sources
+                + " | collection=" + collection
+                + " | from=" + (from==null?"N/A":from)
+                + " | to="   + (to==null?"N/A":to)
+                + " | limit=" + limit
+                + " | saveDir=" + saveDir);
 
-        if (keywords.isEmpty()) {
-            System.err.println("[Collector] ERROR: Thiếu --keywords");
-            printUsage();
-            System.exit(2);
-        }
-
-        var svc = new CollectorService();
-        try {
-            svc.run(keywords, from, to, limit, collection, sources);
-        } catch (Exception e) {
-            System.err.println("[Collector] ERROR: " + e.getMessage());
-            e.printStackTrace();
-            System.exit(1);
-        }
+        CollectorService svc = new CollectorService();
+        sources.forEach(s -> svc.addByName(s, ytKeyUI));
+        svc.run(keywords, from, to, limit, collection, saveDir, ytKeyUI);
     }
 
-    private static Map<String, String> parseArgs(String[] args) {
-        Map<String, String> m = new LinkedHashMap<>();
-        for (int i = 0; i < args.length; i++) {
-            String a = args[i];
-            if (a.startsWith("--")) {
-                String val = "";
-                if (i + 1 < args.length && !args[i + 1].startsWith("--")) val = args[++i];
-                m.put(a, val);
-            }
+    private static Map<String,String> parse(String[] args) {
+        Map<String,String> m = new LinkedHashMap<>();
+        String k = null;
+        for (String a : args) {
+            if (a.startsWith("--")) { k = a; m.put(k, ""); }
+            else if (k != null)     { m.put(k, a); k = null; }
         }
         return m;
-    }
-
-    private static int parseIntSafe(String s, int def) {
-        if (s == null || s.isBlank()) return def;
-        try { return Integer.parseInt(s.trim()); } catch (Exception ignore) { return def; }
-    }
-
-    private static void printUsage() {
-        System.out.println("""
-            Usage:
-              ./gradlew :collector:run --args="\\
-                --keywords 'bão yagi,bao yagi,typhoon yagi' \\
-                --sources news,youtube \\
-                --collection yagi-sept-raw \\
-                --from 2024-09-01T00:00:00Z \\
-                --to   2024-09-30T23:59:59Z \\
-                --limit 300" \\
-              -Dyt.apiKey=YOUR_YT_API_KEY
-            """);
     }
 }

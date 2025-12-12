@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.layout.Priority?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="app.controller.CollectorController">
+
+    <padding>
+        <Insets top="16" right="16" bottom="16" left="16"/>
+    </padding>
+
+    <top>
+        <HBox spacing="10">
+            <children>
+                <Label text="Bộ thu thập dữ liệu"
+                       style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                <Label text="• Thu thập từ News / YouTube / Reddit"
+                       style="-fx-opacity: 0.7;"/>
+            </children>
+        </HBox>
+    </top>
+
+    <center>
+        <VBox spacing="16">
+            <children>
+
+                <GridPane hgap="12" vgap="12">
+                    <columnConstraints>
+                        <ColumnConstraints minWidth="140" halignment="RIGHT"/>
+                        <ColumnConstraints hgrow="ALWAYS"/>
+                    </columnConstraints>
+
+                    <children>
+                        <!-- Keywords -->
+                        <Label text="Từ khóa:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                        <TextField fx:id="keywordsField"
+                                   promptText="ví dụ: bão yagi, bao yagi, typhoon yagi"
+                                   GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                        <!-- Sources -->
+                        <Label text="Nguồn:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                        <HBox spacing="12" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                            <children>
+                                <CheckBox fx:id="newsCheck" text="News"/>
+                                <CheckBox fx:id="youtubeCheck" text="YouTube"/>
+                                <CheckBox fx:id="redditCheck" text="Reddit"/>
+                            </children>
+                        </HBox>
+
+                        <!-- Date range -->
+                        <Label text="Khoảng thời gian:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                        <HBox spacing="8" GridPane.rowIndex="2" GridPane.columnIndex="1">
+                            <children>
+                                <DatePicker fx:id="fromDate" promptText="Từ ngày"/>
+                                <Label text="→" style="-fx-opacity:0.6;"/>
+                                <DatePicker fx:id="toDate" promptText="Đến ngày"/>
+                            </children>
+                        </HBox>
+
+                        <!-- Limit & Collection -->
+                        <Label text="Giới hạn / Collection:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                        <HBox spacing="8" GridPane.rowIndex="3" GridPane.columnIndex="1">
+                            <children>
+                                <TextField fx:id="limitField" promptText="Số lượng (vd: 300)" prefWidth="120"/>
+                                <TextField fx:id="collectionField" promptText="Tên collection (vd: yagi-sept)"/>
+                            </children>
+                        </HBox>
+
+                        <!-- Save dir -->
+                        <Label text="Thư mục lưu:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                        <HBox spacing="8" GridPane.rowIndex="4" GridPane.columnIndex="1">
+                            <children>
+                                <TextField fx:id="saveDirField" promptText="Chọn thư mục đầu ra"/>
+                                <Button fx:id="browseBtn" text="Chọn…" onAction="#onBrowse"/>
+                            </children>
+                            <HBox.hgrow>
+                                <Priority>ALWAYS</Priority>
+                            </HBox.hgrow>
+                        </HBox>
+                    </children>
+                </GridPane>
+
+                <!-- Log -->
+                <TitledPane text="Nhật ký" expanded="true">
+                    <content>
+                        <VBox>
+                            <children>
+                                <TextArea fx:id="logArea" wrapText="true" prefRowCount="12"/>
+                            </children>
+                            <VBox.vgrow>
+                                <Priority>ALWAYS</Priority>
+                            </VBox.vgrow>
+                            <padding>
+                                <Insets top="8" right="8" bottom="8" left="8"/>
+                            </padding>
+                        </VBox>
+                    </content>
+                </TitledPane>
+
+            </children>
+            <VBox.vgrow>
+                <Priority>ALWAYS</Priority>
+            </VBox.vgrow>
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox spacing="12" alignment="CENTER_RIGHT">
+            <children>
+                <Label fx:id="statusLabel" text="Sẵn sàng" style="-fx-opacity: 0.8;">
+                    <HBox.margin>
+                        <Insets right="16"/>
+                    </HBox.margin>
+                </Label>
+                <Pane HBox.hgrow="ALWAYS"/>
+                <Button fx:id="closeBtn" text="Đóng" onAction="#onClose"/>
+                <Button fx:id="runBtn" text="Chạy" defaultButton="true" onAction="#onRun"/>
+            </children>
+            <padding>
+                <Insets top="12" right="0" bottom="0" left="0"/>
+            </padding>
+        </HBox>
+    </bottom>
+
+</BorderPane>

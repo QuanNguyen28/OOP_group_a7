@@ -14,3 +14,4 @@ app-dist/
 # Secrets
 **/*.apikey
 app/config/sa.json
+collector/conf.properties
