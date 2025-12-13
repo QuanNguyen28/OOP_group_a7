@@ -18,7 +18,7 @@ public class CollectorCLI {
         Instant from          = arg.containsKey("--from") ? Instant.parse(arg.get("--from")) : null;
         Instant to            = arg.containsKey("--to")   ? Instant.parse(arg.get("--to"))   : null;
         int limit             = Integer.parseInt(arg.getOrDefault("--limit", "300"));
-        Path saveDir          = Path.of(arg.getOrDefault("--saveDir", "collector/data/collections"));
+        Path saveDir          = Path.of(arg.getOrDefault("--saveDir", "data/collections/live"));
         String ytKeyUI        = arg.getOrDefault("--yt.apiKey", null);
 
         System.out.println("[Collector] keywords=" + String.join(", ", keywords)

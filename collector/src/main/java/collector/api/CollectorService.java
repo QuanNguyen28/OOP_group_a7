@@ -70,7 +70,8 @@ public class CollectorService {
         Objects.requireNonNull(keywords, "keywords");
         if (limit <= 0) limit = 300;
         if (collection == null || collection.isBlank()) collection = "default";
-        if (saveDir == null) saveDir = Path.of("collector/data/collections");
+        // Mặc định lưu vào thư mục data/collections/live trong dự án
+        if (saveDir == null) saveDir = Path.of("../data/collections/live");
 
         // Nếu chưa có connector nào thì bật mặc định: news + youtube
         if (connectors.isEmpty()) {

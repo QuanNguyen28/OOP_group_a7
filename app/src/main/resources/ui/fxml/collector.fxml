@@ -3,9 +3,8 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.layout.Priority?>
 
-<BorderPane xmlns="http://javafx.com/javafx"
+<BorderPane xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="app.controller.CollectorController">
 
@@ -30,7 +29,7 @@
 
                 <GridPane hgap="12" vgap="12">
                     <columnConstraints>
-                        <ColumnConstraints minWidth="140" halignment="RIGHT"/>
+                        <ColumnConstraints minWidth="140"/>
                         <ColumnConstraints hgrow="ALWAYS"/>
                     </columnConstraints>
 
@@ -74,12 +73,9 @@
                         <Label text="Thư mục lưu:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
                         <HBox spacing="8" GridPane.rowIndex="4" GridPane.columnIndex="1">
                             <children>
-                                <TextField fx:id="saveDirField" promptText="Chọn thư mục đầu ra"/>
+                                <TextField fx:id="saveDirField" promptText="Chọn thư mục đầu ra" HBox.hgrow="ALWAYS"/>
                                 <Button fx:id="browseBtn" text="Chọn…" onAction="#onBrowse"/>
                             </children>
-                            <HBox.hgrow>
-                                <Priority>ALWAYS</Priority>
-                            </HBox.hgrow>
                         </HBox>
                     </children>
                 </GridPane>
@@ -87,24 +83,18 @@
                 <!-- Log -->
                 <TitledPane text="Nhật ký" expanded="true">
                     <content>
-                        <VBox>
-                            <children>
-                                <TextArea fx:id="logArea" wrapText="true" prefRowCount="12"/>
-                            </children>
-                            <VBox.vgrow>
-                                <Priority>ALWAYS</Priority>
-                            </VBox.vgrow>
+                        <VBox spacing="8">
                             <padding>
                                 <Insets top="8" right="8" bottom="8" left="8"/>
                             </padding>
+                            <children>
+                                <TextArea fx:id="logArea" wrapText="true" prefRowCount="12" VBox.vgrow="ALWAYS"/>
+                            </children>
                         </VBox>
                     </content>
                 </TitledPane>
 
             </children>
-            <VBox.vgrow>
-                <Priority>ALWAYS</Priority>
-            </VBox.vgrow>
         </VBox>
     </center>
 
@@ -121,7 +111,7 @@
                 <Button fx:id="runBtn" text="Chạy" defaultButton="true" onAction="#onRun"/>
             </children>
             <padding>
-                <Insets top="12" right="0" bottom="0" left="0"/>
+                <Insets top="12"/>
             </padding>
         </HBox>
     </bottom>
