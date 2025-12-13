@@ -138,7 +138,7 @@ public class DashboardController {
     }
 
     private String resolveLatestRunId() {
-        String sql = "SELECT run_id FROM runs ORDER BY started DESC LIMIT 1";
+        String sql = "SELECT run_id FROM runs ORDER BY started_at DESC LIMIT 1";
         try (var conn = connect(); var st = conn.createStatement(); var rs = st.executeQuery(sql)) {
             if (rs.next()) return rs.getString(1);
         } catch (Exception ex) {
@@ -175,7 +175,7 @@ public class DashboardController {
             }
             if (!out.isEmpty()) return out;
             String sqlFallback = """
-                SELECT substr(created_at,1,10) AS day,
+                SELECT substr(ts,1,10) AS day,
                        SUM(CASE WHEN label='pos' THEN 1 ELSE 0 END) AS pos,
                        SUM(CASE WHEN label='neg' THEN 1 ELSE 0 END) AS neg,
                        SUM(CASE WHEN label='neu' THEN 1 ELSE 0 END) AS neu

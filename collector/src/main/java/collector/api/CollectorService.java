@@ -117,9 +117,9 @@ public class CollectorService {
 
         // 1) collector/conf.properties (ưu tiên)
         String fromFile = loadPropertyFromFiles("yt.apiKey",
-                Path.of("collector/conf.properties"),
+                Path.of("../collector/conf.properties"),
                 Path.of("conf.properties"),
-                Path.of("app/collector/conf.properties"));
+                Path.of("../app/collector/conf.properties"));
         if (fromFile != null && !fromFile.isBlank()) return fromFile;
 
         // 2) -Dyt.apiKey

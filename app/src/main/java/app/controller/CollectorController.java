@@ -4,7 +4,7 @@ import collector.api.CollectorService;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.stage.DirectoryChooser;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 
 import java.nio.file.Files;
@@ -15,8 +15,10 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class CollectorController {
+    private Path projectRoot = Path.of("").toAbsolutePath();
 
     @FXML private TextField keywordsField;
     @FXML private CheckBox newsCheck;
@@ -29,42 +31,30 @@ public class CollectorController {
     @FXML private TextField limitField;
     @FXML private TextField collectionField;
 
-    @FXML private TextField saveDirField;
-    @FXML private Button browseBtn;
     @FXML private Button runBtn;
     @FXML private Button closeBtn;
 
-    @FXML private Label statusLabel;
-    @FXML private TextArea logArea;
+    // UI mới: không còn TextArea log hay chọn thư mục.
+    @FXML private HBox runningBox;          // khối “Đang thu thập…”
+    @FXML private Label statusLabel;        // dòng trạng thái ngắn
+    @FXML private ListView<String> sampleList; // hiển thị mẫu dữ liệu mới
 
     public void init(Path projectRoot) {
-        if (saveDirField != null) {
-            Path def = projectRoot.resolve("data/collections");
-            saveDirField.setText(def.toAbsolutePath().toString());
-        }
+        this.projectRoot = (projectRoot == null) ? Path.of("").toAbsolutePath() : projectRoot;
+
         if (fromDate != null && toDate != null) {
             toDate.setValue(LocalDate.now());
             fromDate.setValue(LocalDate.now().minusDays(30));
         }
         if (limitField != null) limitField.setText("300");
         if (collectionField != null) collectionField.setText("default");
+
         if (statusLabel != null) statusLabel.setText("Sẵn sàng");
-        if (logArea != null) logArea.setText("");
+        if (runningBox != null) { runningBox.setVisible(false); runningBox.setManaged(false); }
+        if (sampleList != null) sampleList.getItems().clear();
+
         if (newsCheck != null) newsCheck.setSelected(true);
         if (youtubeCheck != null) youtubeCheck.setSelected(true);
-    }
-
-    /** Alias cho FXML đang gọi #onChooseSaveDir */
-    @FXML
-    private void onChooseSaveDir() { onBrowse(); }
-
-    @FXML
-    private void onBrowse() {
-        DirectoryChooser dc = new DirectoryChooser();
-        dc.setTitle("Chọn thư mục lưu dữ liệu");
-        Stage st = (Stage) browseBtn.getScene().getWindow();
-        var dir = dc.showDialog(st);
-        if (dir != null) saveDirField.setText(dir.toPath().toAbsolutePath().toString());
     }
 
     @FXML
@@ -93,21 +83,14 @@ public class CollectorController {
             String collection = safeText(collectionField);
             if (collection.isBlank()) collection = "default";
 
-            Path saveDir = Path.of(safeText(saveDirField).isBlank() ? "data/collections" : saveText(saveDirField));
+            // Lưu mặc định vào ../data/collections (CollectorService tự nối /<collection>)
+            Path saveDir = projectRoot.resolve("../data/collections");
             Files.createDirectories(saveDir);
-            if (!Files.isWritable(saveDir)) { alert("Thư mục không ghi được: " + saveDir.toAbsolutePath()); return; }
 
             CollectorService svc = new CollectorService();
             if (newsCheck.isSelected())    svc.add("news");
             if (youtubeCheck.isSelected()) svc.add("youtube");
             if (redditCheck.isSelected())  svc.add("reddit");
-
-            log("[CollectorUI] keywords=" + String.join(", ", keywords)
-                + " | sources=" + sourcesText()
-                + " | collection=" + collection
-                + " | from=" + from + " | to=" + to
-                + " | limit=" + limit
-                + " | saveDir=" + saveDir.toAbsolutePath());
 
             final List<String> keywords0 = List.copyOf(keywords);
             final Instant from0 = from, to0 = to;
@@ -116,7 +99,7 @@ public class CollectorController {
             final Path saveDir0 = saveDir;
 
             toggleUi(false);
-            if (statusLabel != null) statusLabel.setText("Đang thu thập…");
+            showRunning(true, "Đang thu thập…");
 
             Task<Path> job = new Task<>() {
                 @Override protected Path call() throws Exception {
@@ -126,25 +109,21 @@ public class CollectorController {
 
             job.setOnSucceeded(e -> {
                 toggleUi(true);
+                showRunning(false, null);
                 Path out = job.getValue();
-                log("[CollectorUI] DONE: " + out.toAbsolutePath());
-                if (statusLabel != null) statusLabel.setText("Hoàn tất: " + out.getFileName()
-                        + " (Pipeline đọc từ data/collections/" + collection0 + "/)");
+                status("Hoàn tất: " + out.getFileName() + " (Pipeline đọc từ data/collections/" + collection0 + "/)");
+                showSample(out, 30);
             });
 
             job.setOnFailed(e -> {
                 toggleUi(true);
+                showRunning(false, null);
                 Throwable ex = job.getException();
                 String msg = ex.getMessage() == null ? ex.toString() : ex.getMessage();
-                log("[CollectorUI] ERROR: " + msg);
                 if (msg.toLowerCase().contains("yt.apikey")) {
-                    log("""
-                        Gợi ý: Đặt YouTube API key tại collector/conf.properties:
-                          yt.apiKey=YOUR_YT_API_KEY
-                        (hoặc export YT_API_KEY / hoặc -Dyt.apiKey=...)
-                        """);
+                    msg += "\n\nGợi ý: Đặt YouTube API key tại collector/conf.properties:\nyt.apiKey=YOUR_YT_API_KEY";
                 }
-                if (statusLabel != null) statusLabel.setText("Lỗi: " + msg);
+                status("Lỗi: " + msg);
                 alert("Thu thập thất bại:\n" + msg);
             });
 
@@ -164,11 +143,10 @@ public class CollectorController {
         st.close();
     }
 
-    /* helpers */
+    /* ===== helpers ===== */
 
     private void toggleUi(boolean enable) {
         if (runBtn != null) runBtn.setDisable(!enable);
-        if (browseBtn != null) browseBtn.setDisable(!enable);
         if (keywordsField != null) keywordsField.setDisable(!enable);
         if (newsCheck != null) newsCheck.setDisable(!enable);
         if (youtubeCheck != null) youtubeCheck.setDisable(!enable);
@@ -177,35 +155,76 @@ public class CollectorController {
         if (toDate != null) toDate.setDisable(!enable);
         if (limitField != null) limitField.setDisable(!enable);
         if (collectionField != null) collectionField.setDisable(!enable);
-        if (saveDirField != null) saveDirField.setDisable(!enable);
         if (closeBtn != null) closeBtn.setDisable(!enable);
     }
 
-    private void log(String s) {
-        if (logArea != null) {
-            if (!logArea.getText().isBlank()) logArea.appendText("\n");
-            logArea.appendText(s);
-        } else {
-            System.out.println(s);
+    private void showRunning(boolean show, String text) {
+        if (runningBox != null) {
+            runningBox.setVisible(show);
+            runningBox.setManaged(show);
         }
+        if (statusLabel != null && text != null) statusLabel.setText(text);
+    }
+
+    private void status(String s) {
+        if (statusLabel != null) statusLabel.setText(s);
     }
 
     private static String safeText(TextField f) {
         return f == null || f.getText() == null ? "" : f.getText().trim();
     }
-    private static String saveText(TextField f) {
-        return f.getText() == null ? "" : f.getText();
-    }
+
     private void alert(String msg) {
-        Alert a = new Alert(Alert.AlertType.WARNING, msg, ButtonType.OK);
+        Alert a = new Alert(Alert.AlertType.INFORMATION, msg, ButtonType.OK);
         a.setHeaderText(null);
         a.showAndWait();
     }
-    private String sourcesText() {
-        List<String> s = new ArrayList<>();
-        if (newsCheck != null && newsCheck.isSelected()) s.add("news");
-        if (youtubeCheck != null && youtubeCheck.isSelected()) s.add("youtube");
-        if (redditCheck != null && redditCheck.isSelected()) s.add("reddit");
-        return s.toString();
+
+    /* Hiển thị mẫu dữ liệu: đọc file JSONL, rút gọn các trường chính */
+    private void showSample(Path jsonlFile, int maxLines) {
+        if (sampleList == null) return;
+        sampleList.getItems().clear();
+
+        try (Stream<String> lines = Files.lines(jsonlFile)) {
+            lines.limit(maxLines).map(this::formatSampleLine).forEach(sampleList.getItems()::add);
+        } catch (Exception e) {
+            sampleList.getItems().add("Không thể đọc mẫu dữ liệu: " + e.getMessage());
+        }
+    }
+
+    private String formatSampleLine(String json) {
+        String platform = jget(json, "platform");
+        String ts       = jget(json, "ts");
+        String text     = jget(json, "text");
+        if (text.length() > 140) text = text.substring(0, 140) + "…";
+        return "[" + platform + "] " + ts + " — " + text;
+    }
+
+    /* Trích chuỗi JSON đơn giản (không phụ thuộc thư viện JSON) */
+    private static String jget(String json, String key) {
+        String pat = "\"" + key + "\"";
+        int i = json.indexOf(pat);
+        if (i < 0) return "";
+        i = json.indexOf(':', i);
+        if (i < 0) return "";
+        int q1 = json.indexOf('"', i + 1);
+        if (q1 < 0) return "";
+        StringBuilder sb = new StringBuilder();
+        boolean esc = false;
+        for (int k = q1 + 1; k < json.length(); k++) {
+            char c = json.charAt(k);
+            if (esc) {
+                if (c == 'n') sb.append(' ');
+                else sb.append(c);
+                esc = false;
+            } else if (c == '\\') {
+                esc = true;
+            } else if (c == '"') {
+                break;
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 }

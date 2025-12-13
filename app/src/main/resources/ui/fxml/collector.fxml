@@ -68,27 +68,27 @@
                                 <TextField fx:id="collectionField" promptText="Tên collection (vd: yagi-sept)"/>
                             </children>
                         </HBox>
-
-                        <!-- Save dir -->
-                        <Label text="Thư mục lưu:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-                        <HBox spacing="8" GridPane.rowIndex="4" GridPane.columnIndex="1">
-                            <children>
-                                <TextField fx:id="saveDirField" promptText="Chọn thư mục đầu ra" HBox.hgrow="ALWAYS"/>
-                                <Button fx:id="browseBtn" text="Chọn…" onAction="#onBrowse"/>
-                            </children>
-                        </HBox>
                     </children>
                 </GridPane>
 
-                <!-- Log -->
-                <TitledPane text="Nhật ký" expanded="true">
+                <!-- Running indicator (hidden by default) -->
+                <HBox fx:id="runningBox" spacing="8" alignment="CENTER_LEFT" visible="false" managed="false">
+                    <children>
+                        <ProgressIndicator prefWidth="20" prefHeight="20"/>
+                        <Label text="Đang thu thập…"/>
+                    </children>
+                </HBox>
+
+                <!-- Sample preview instead of raw log -->
+                <TitledPane text="Mẫu dữ liệu" expanded="true">
                     <content>
                         <VBox spacing="8">
                             <padding>
                                 <Insets top="8" right="8" bottom="8" left="8"/>
                             </padding>
                             <children>
-                                <TextArea fx:id="logArea" wrapText="true" prefRowCount="12" VBox.vgrow="ALWAYS"/>
+                                <Label text="Hiển thị tối đa 30 dòng mới nhất." style="-fx-opacity:0.7;"/>
+                                <ListView fx:id="sampleList" prefHeight="240"/>
                             </children>
                         </VBox>
                     </content>
