@@ -212,11 +212,105 @@ public class PipelineService {
 
     public RunResult runIngest(String keyword) { return run(keyword); }
 
+    /** Chạy với cửa sổ thời gian (from/to). Nếu null sẽ bỏ qua lọc thời gian. */
+    public RunResult run(String rawKeyword, Instant from, Instant to) {
+        String runId = "run_" + System.currentTimeMillis();
+        Instant started = Instant.now();
+        reflectStartRun(runId, rawKeyword, started);
+
+        Set<String> keys = expandKeywords(rawKeyword);
+        // Build QuerySpec and apply window
+        app.model.service.ingest.QuerySpec spec = buildQuerySpec(keys).withWindow(from, to);
+
+        // Ingest with spec
+        List<RawPost> raw = fetchFromConnectors(spec);
+        System.out.println("[Pipeline] raw from connectors = " + raw.size());
+
+        List<CleanPost> cleaned = raw.stream()
+                .map(preprocess::preprocess)
+                .filter(cp -> matchByKeyword(cp.textNorm(), keys))
+                .toList();
+        System.out.println("[Pipeline] cleaned & matched   = " + cleaned.size());
+
+        reflectSavePosts(cleaned, runId);
+
+        List<SentimentResult> sents = cleaned.stream()
+                .map(cp -> nlp.analyzeSentiment(cp.rawId(), cp.textNorm(), cp.lang(), cp.ts()))
+                .toList();
+        saveSentimentsDirect(sents, runId);
+
+        Map<Instant, Counts> daily = aggregateDaily(sents);
+        for (var e : daily.entrySet()) {
+            Instant bucket = e.getKey();
+            Counts c = e.getValue();
+            analyticsRepo.upsertOverallSentiment(runId, bucket, c.pos, c.neg, c.neu);
+        }
+
+        int damageRows = 0, reliefRows = 0;
+        Map<String,int[]> aggTask3 = new LinkedHashMap<>();
+        Map<String,int[]> aggTask4 = new LinkedHashMap<>();
+        ZoneId utc = ZoneOffset.UTC;
+
+        boolean hasLocal = (nlp instanceof LocalNlpModel);
+        for (int i = 0; i < cleaned.size(); i++) {
+            CleanPost cp = cleaned.get(i);
+            SentimentResult sr = sents.get(i);
+            int isPos = (sr.label() == SentimentLabel.pos) ? 1 : 0;
+            int isNeg = (sr.label() == SentimentLabel.neg) ? 1 : 0;
+            int isNeu = (sr.label() == SentimentLabel.neu) ? 1 : 0;
+
+            LocalDate d = sr.ts().atZone(utc).toLocalDate();
+            String dayIso = d.toString();
+
+            if (hasLocal) {
+                var types = ((LocalNlpModel) nlp).detectDamageTypes(cp.textNorm());
+                if (!types.isEmpty()) {
+                    damageRows += insertDamageRows(cp.rawId(), types, sr.ts(), runId);
+                }
+            }
+
+            List<String> items = hasLocal ? ((LocalNlpModel) nlp).detectReliefItems(cp.textNorm()) : List.of();
+            if (!items.isEmpty()) {
+                reliefRows += insertReliefRows(cp.rawId(), items, sr.ts(), runId);
+
+                for (String it : items) {
+                    int[] v3 = aggTask3.computeIfAbsent(it, k -> new int[3]);
+                    v3[0] += isPos; v3[1] += isNeg; v3[2] += isNeu;
+
+                    String key = dayIso + "||" + it;
+                    int[] v4 = aggTask4.computeIfAbsent(key, k -> new int[3]);
+                    v4[0] += isPos; v4[1] += isNeg; v4[2] += isNeu;
+                }
+            }
+        }
+
+        saveTask3(runId, aggTask3);
+        saveTask4(runId, aggTask4);
+
+        System.out.println("[Pipeline] damage rows = " + damageRows + " | relief rows = " + reliefRows);
+
+        reflectFinishRun(runId, started, Instant.now(), cleaned.size(), sents.size());
+        return new RunResult(runId, cleaned.size(), sents.size());
+    }
+
     /* ---------- Helpers ---------- */
 
     private List<RawPost> fetchFromConnectors(Set<String> keys) {
         if (connectors == null || connectors.isEmpty()) return List.of();
         QuerySpec spec = buildQuerySpec(keys);
+        List<RawPost> all = new ArrayList<>();
+        for (var c : connectors) {
+            try (Stream<RawPost> stream = c.fetch(spec)) {
+                if (stream != null) stream.forEach(all::add);
+            } catch (Exception ex) {
+                System.err.println("[WARN] Connector " + c.getClass().getSimpleName() + " failed: " + ex.getMessage());
+            }
+        }
+        return all;
+    }
+
+    private List<RawPost> fetchFromConnectors(app.model.service.ingest.QuerySpec spec) {
+        if (connectors == null || connectors.isEmpty()) return List.of();
         List<RawPost> all = new ArrayList<>();
         for (var c : connectors) {
             try (Stream<RawPost> stream = c.fetch(spec)) {

@@ -19,11 +19,12 @@
                 <TextField fx:id="keywordField"
                            promptText="ví dụ: yagi, ragasa, cuu tro"
                            prefWidth="280"/>
+
                 <Separator orientation="VERTICAL"/>
                 <Label text="From:"/>
-                <DatePicker fx:id="fromDatePicker" promptText="yyyy-MM-dd"/>
+                <DatePicker fx:id="fromDate" promptText="yyyy-MM-dd"/>
                 <Label text="To:"/>
-                <DatePicker fx:id="toDatePicker" promptText="yyyy-MM-dd"/>
+                <DatePicker fx:id="toDate" promptText="yyyy-MM-dd"/>
 
                 <Button fx:id="runBtn" text="Run Ingest" onAction="#onRunIngest">
                     <tooltip><Tooltip text="Nạp &amp; phân tích dữ liệu theo từ khóa"/></tooltip>

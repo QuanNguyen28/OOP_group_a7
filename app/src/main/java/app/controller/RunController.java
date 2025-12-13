@@ -10,6 +10,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.control.DatePicker;
 import javafx.stage.Stage;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -22,6 +23,8 @@ public class RunController {
     @FXML private TextField keywordField;
     @FXML private Button runBtn;
     @FXML private Label statusLabel;
+    @FXML private DatePicker fromDate;
+    @FXML private DatePicker toDate;
 
     private PipelineService pipeline;
     private String lastRunId;
@@ -42,12 +45,31 @@ public class RunController {
             return;
         }
 
+        // Lấy khoảng thời gian từ UI (nếu có)
+        final java.time.Instant fFrom;
+        final java.time.Instant fTo;
+        java.time.Instant tmpFrom = null, tmpTo = null;
+        try {
+            if (fromDate != null && fromDate.getValue() != null) {
+                java.time.LocalDate d = fromDate.getValue();
+                tmpFrom = d.atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+            }
+            if (toDate != null && toDate.getValue() != null) {
+                java.time.LocalDate d = toDate.getValue();
+                // End-of-day window: start of next day
+                tmpTo = d.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+            }
+        } catch (Exception ignore) {}
+        fFrom = tmpFrom;
+        fTo = tmpTo;
+
         if (runBtn != null) runBtn.setDisable(true);
         if (statusLabel != null) statusLabel.setText("Đang chạy ingest + NLP…");
 
         Task<RunResult> job = new Task<>() {
             @Override protected RunResult call() {
-                return pipeline.run(kw);
+                // Nếu có from/to → dùng overload hỗ trợ cửa sổ thời gian
+                return pipeline.run(kw, fFrom, fTo);
             }
         };
 
@@ -81,10 +103,17 @@ public class RunController {
             DashboardController ctrl = loader.getController();
             if (ctrl != null) {
                 ctrl.setRun(runId);
+                // Nếu người dùng đã chọn khoảng thời gian ở màn Run → áp dụng cho Dashboard
+                java.time.LocalDate initFrom = (fromDate != null) ? fromDate.getValue() : null;
+                java.time.LocalDate initTo   = (toDate   != null) ? toDate.getValue()   : null;
+                if (initFrom != null || initTo != null) {
+                    ctrl.setInitialRange(initFrom, initTo);
+                }
                 ctrl.loadData();
             }
 
-            Stage st = (Stage) runBtn.getScene().getWindow();
+            javafx.stage.Window w = runBtn != null && runBtn.getScene() != null ? runBtn.getScene().getWindow() : null;
+            Stage st = (w instanceof Stage) ? (Stage) w : new Stage();
             Scene scene = new Scene(root, 1200, 720);
             scene.getStylesheets().addAll(
                 getClass().getResource("/ui/styles/tokens.css").toExternalForm(),

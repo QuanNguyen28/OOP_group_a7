@@ -130,11 +130,22 @@ public class InsightService {
     }
 
     private String fetchTask4Csv(String runId, LocalDate from, LocalDate to, int limit) {
+        // CRITICAL: When date range is specified, do NOT fall back to unfiltered data
+        // Always try to use the date-filtered queries first
         List<Object> rows = callList(repo, "readReliefDaily", runId, from, to);
-        if (rows.isEmpty()) rows = callList(repo, "readReliefDaily", runId);
+        System.out.println("[InsightService] fetchTask4Csv readReliefDaily(runId, from, to) returned " + rows.size() + " rows");
         if (rows.isEmpty()) rows = callList(repo, "readTask4Daily", runId, from, to);
-        if (rows.isEmpty()) return "";
-        return rows.stream().limit(limit).map(r -> {
+        System.out.println("[InsightService] fetchTask4Csv readTask4Daily(runId, from, to) returned " + rows.size() + " rows");
+        // Only fall back to unfiltered if NO date range was specified
+        if (rows.isEmpty() && from == null && to == null) {
+            rows = callList(repo, "readReliefDaily", runId);
+            System.out.println("[InsightService] fetchTask4Csv readReliefDaily(runId) fallback returned " + rows.size() + " rows");
+        }
+        if (rows.isEmpty()) {
+            System.err.println("[InsightService] fetchTask4Csv: No data found for Task4 (runId=" + runId + ", from=" + from + ", to=" + to + ")");
+            return "";
+        }
+        String csv = rows.stream().limit(limit).map(r -> {
             LocalDate day = parseLocalDate(getAny(r, "day","date","bucketStart"));
             String cat = str(getAny(r, "category","item","tag","label"));
             int pos = parseInt(getAny(r, "pos","positive","posCount"));
@@ -142,6 +153,8 @@ public class InsightService {
             int net = parseInt(getAny(r, "net","total","totalScore","score"));
             return "%s,%s,%d,%d,%d".formatted(day == null ? "" : day, cat, pos, neg, net);
         }).collect(Collectors.joining("\n"));
+        System.out.println("[InsightService] fetchTask4Csv produced CSV with " + csv.split("\n").length + " lines");
+        return csv;
     }
 
     private LocalDate[] deriveRangeFromTask4(String csv, LocalDate from, LocalDate to) {
@@ -161,9 +174,20 @@ public class InsightService {
 
     private String safeComplete(String prompt, String title) {
         try {
+            if (prompt == null || prompt.isBlank()) {
+                System.err.println("[InsightService] Empty prompt for " + title + ", using fallback");
+                return "[LocalEcho:local-echo]\n" + title + " — Tự động tóm tắt cục bộ (fallback)."
+                        + "\n\n(Prompt rỗng)\n";
+            }
             String out = llm.complete(prompt);
-            if (out != null && !out.isBlank()) return out;
-        } catch (Exception ignored) {}
+            if (out != null && !out.isBlank()) {
+                System.out.println("[InsightService] LLM completed for " + title);
+                return out;
+            }
+        } catch (Exception ex) {
+            System.err.println("[InsightService] LLM error for " + title + ": " + ex.getClass().getSimpleName() + " " + ex.getMessage());
+            ex.printStackTrace();
+        }
         return "[LocalEcho:local-echo]\n" + title + " — Tự động tóm tắt cục bộ (fallback)."
                 + "\n\n(Prompt + dữ liệu — rút gọn)\n"
                 + truncate(prompt, 1400);
@@ -179,12 +203,17 @@ public class InsightService {
     private static List<Object> callList(Object target, String method, Object... args) {
         try {
             Method m = resolveMethod(target.getClass(), method, args);
-            if (m == null) return List.of();
+            if (m == null) {
+                System.err.println("[InsightService] No method found: " + method + " with " + args.length + " args");
+                return List.of();
+            }
             Object val = m.invoke(target, args);
             if (val instanceof List<?> l) return (List<Object>) l;
             if (val instanceof Collection<?> c) return new ArrayList<>(c);
             return List.of();
         } catch (Exception e) {
+            System.err.println("[InsightService] Error calling " + method + ": " + e.getClass().getSimpleName() + " " + e.getMessage());
+            e.printStackTrace();
             return List.of();
         }
     }

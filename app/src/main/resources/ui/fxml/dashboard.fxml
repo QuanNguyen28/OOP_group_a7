@@ -10,23 +10,11 @@
     <top>
         <VBox spacing="8" styleClass="page">
             <HBox spacing="12">
-                <Label text="Run:"/>
-                <ComboBox fx:id="runSelector" prefWidth="220" promptText="Chọn run..."/>
-
-                <Separator orientation="VERTICAL"/>
-
-                <Label text="From:"/>
-                <DatePicker fx:id="fromDate" promptText="yyyy-MM-dd" showWeekNumbers="true" editable="false"/>
-                <Label text="To:"/>
-                <DatePicker fx:id="toDate" promptText="yyyy-MM-dd" showWeekNumbers="true" editable="false"/>
-
-                <Separator orientation="VERTICAL"/>
-
-                <Label text="Top N:"/>
-                <Spinner fx:id="topNSpinner" prefWidth="90"/>
-
-                <Button fx:id="btnRefresh" text="Refresh" styleClass="toolbar-btn"/>
                 <Button fx:id="btnExport"  text="Export CSV" styleClass="toolbar-btn"/>
+                <Separator/>
+                <Label text="Date Range:"/>
+                <DatePicker fx:id="dpFrom" promptText="From (yyyy-MM-dd)"/>
+                <DatePicker fx:id="dpTo" promptText="To (yyyy-MM-dd)"/>
             </HBox>
             <Label fx:id="statusLabel" text="Ready"/>
         </VBox>

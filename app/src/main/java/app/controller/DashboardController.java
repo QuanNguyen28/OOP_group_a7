@@ -55,9 +55,17 @@ public class DashboardController {
     private AnalyticsRepo analyticsRepo;
     private InsightService insights;
     private final LocalNlpModel nlpModel = new LocalNlpModel();
+    // Store initial range from RunController
+    private LocalDate initialFromDate = null;
+    private LocalDate initialToDate = null;
 
     public void setRun(String runId) { this.runId = runId; }
     public void setAnalyticsRepo(AnalyticsRepo repo) { this.analyticsRepo = repo; }
+    public void setInitialRange(LocalDate from, LocalDate to) {
+        this.initialFromDate = from;
+        this.initialToDate = to;
+        System.out.println("[Dashboard] setInitialRange from=" + from + " to=" + to);
+    }
 
     public void initializeWith(String runId, AnalyticsRepo repo) {
         this.runId = runId;
@@ -86,10 +94,16 @@ public class DashboardController {
             this.insights = null;
         }
         wireSummaryButtons();
+        // Apply initial range BEFORE loading any charts
+        if (dpFrom != null && dpTo != null) {
+            if (initialFromDate != null) dpFrom.setValue(initialFromDate);
+            if (initialToDate != null) dpTo.setValue(initialToDate);
+            System.out.println("[Dashboard] Applied initial range dpFrom=" + dpFrom.getValue() + " dpTo=" + dpTo.getValue());
+        }
+        initTask34(this.runId);
         loadOverview();
         loadDamage();
         loadRelief();
-        initTask34(this.runId);
     }
 
     private LlmClient createLlmClient() {
@@ -198,6 +212,63 @@ public class DashboardController {
         return out;
     }
 
+    private List<OverallRow> queryOverall(String runId, LocalDate from, LocalDate to) {
+        String base = """
+            SELECT substr(bucket_start,1,10) AS day,
+                   COALESCE(pos,0) AS pos,
+                   COALESCE(neg,0) AS neg,
+                   COALESCE(neu,0) AS neu
+            FROM overall_sentiment
+            WHERE run_id = ?
+        """;
+        StringBuilder sb = new StringBuilder(base);
+        if (from != null) sb.append(" AND substr(bucket_start,1,10) >= ?");
+        if (to   != null) sb.append(" AND substr(bucket_start,1,10) <= ?");
+        sb.append(" ORDER BY day");
+        List<OverallRow> out = new ArrayList<>();
+        try (var conn = connect(); var ps = conn.prepareStatement(sb.toString())) {
+            int idx = 1;
+            ps.setString(idx++, runId);
+            if (from != null) ps.setString(idx++, from.toString());
+            if (to   != null) ps.setString(idx++, to.toString());
+            try (var rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new OverallRow(rs.getString("day"), rs.getInt("pos"), rs.getInt("neg"), rs.getInt("neu")));
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        if (!out.isEmpty()) return out;
+        // Fallback to sentiments with range
+        String base2 = """
+            SELECT substr(ts,1,10) AS day,
+                   SUM(CASE WHEN label='pos' THEN 1 ELSE 0 END) AS pos,
+                   SUM(CASE WHEN label='neg' THEN 1 ELSE 0 END) AS neg,
+                   SUM(CASE WHEN label='neu' THEN 1 ELSE 0 END) AS neu
+            FROM sentiments
+            WHERE run_id = ?
+        """;
+        StringBuilder sb2 = new StringBuilder(base2);
+        if (from != null) sb2.append(" AND substr(ts,1,10) >= ?");
+        if (to   != null) sb2.append(" AND substr(ts,1,10) <= ?");
+        sb2.append(" GROUP BY day ORDER BY day");
+        try (var conn = connect(); var ps2 = conn.prepareStatement(sb2.toString())) {
+            int idx = 1;
+            ps2.setString(idx++, runId);
+            if (from != null) ps2.setString(idx++, from.toString());
+            if (to   != null) ps2.setString(idx++, to.toString());
+            try (var rs = ps2.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new OverallRow(rs.getString("day"), rs.getInt("pos"), rs.getInt("neg"), rs.getInt("neu")));
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return out;
+    }
+
     private LocalDate[] queryOverallDateRange(String runId) {
         String sql = "SELECT MIN(substr(bucket_start,1,10)) AS minDay, MAX(substr(bucket_start,1,10)) AS maxDay FROM overall_sentiment WHERE run_id = ?";
         LocalDate min = null, max = null;
@@ -220,7 +291,15 @@ public class DashboardController {
     private void loadOverview() {
         if (overallChart == null) return;
         overallChart.getData().clear();
-        var rows = queryOverall(runId);
+        LocalDate selFrom = dpFrom != null ? dpFrom.getValue() : null;
+        LocalDate selTo   = dpTo   != null ? dpTo.getValue()   : null;
+        // Validate range
+        if (selFrom != null && selTo != null && selFrom.isAfter(selTo)) {
+            if (overallSubtitle != null) overallSubtitle.setText("Invalid range: From > To");
+            return;
+        }
+        System.out.println("[Dashboard] loadOverview range from=" + selFrom + " to=" + selTo + " (run=" + runId + ")");
+        var rows = (selFrom != null || selTo != null) ? queryOverall(runId, selFrom, selTo) : queryOverall(runId);
         XYChart.Series<String, Number> sPos = new XYChart.Series<>(); sPos.setName("Positive");
         XYChart.Series<String, Number> sNeg = new XYChart.Series<>(); sNeg.setName("Negative");
         XYChart.Series<String, Number> sNeu = new XYChart.Series<>(); sNeu.setName("Neutral");
@@ -238,8 +317,16 @@ public class DashboardController {
             if (rows.isEmpty()) {
                 overallSubtitle.setText("No data for run: " + runId);
             } else {
-                String range = (fromDay != null && toDay != null) ? (" | Range: " + fromDay + " → " + toDay) : "";
-                overallSubtitle.setText("Total analyzed posts: " + total + " (run=" + runId + ")" + range);
+                String displayedRange;
+                if (selFrom != null || selTo != null) {
+                    String f = (selFrom != null) ? selFrom.toString() : fromDay;
+                    String t = (selTo   != null) ? selTo.toString()   : toDay;
+                    displayedRange = " | Range: " + f + " → " + t;
+                } else {
+                    displayedRange = (fromDay != null && toDay != null) ? (" | Range: " + fromDay + " → " + toDay) : "";
+                }
+                overallSubtitle.setText("Total analyzed posts: " + total + " (run=" + runId + ")" + displayedRange);
+                System.out.println("[Dashboard] loadOverview rows=" + rows.size() + " first=" + fromDay + " last=" + toDay);
             }
         }
     }
@@ -419,15 +506,21 @@ public class DashboardController {
                     dpTo.setValue(LocalDate.of(2024, 9, 30));
                 }
             }
+            // Khi người dùng đổi ngày → cập nhật ngay biểu đồ Overall và Task 3/4
+            dpFrom.setOnAction(e -> { loadOverview(); loadTask3(); loadTask4(); });
+            dpTo.setOnAction(e -> { loadOverview(); loadTask3(); loadTask4(); });
         }
         if (btnRefreshTask4 != null) {
-            btnRefreshTask4.setOnAction(e -> { loadTask3(); loadTask4(); });
+            // Làm nút Refresh cập nhật tất cả theo khoảng thời gian đã chọn
+            btnRefreshTask4.setOnAction(e -> { loadOverview(); loadTask3(); loadTask4(); });
         }
         if (btnExportTask3 != null) {
             btnExportTask3.setOnAction(e -> exportTask3Csv());
         }
         loadTask3();
         loadTask4();
+        // Đảm bảo Overall cũng hiển thị đúng theo khoảng thời gian đã chọn
+        loadOverview();
     }
 
     private void wireSummaryButtons() {

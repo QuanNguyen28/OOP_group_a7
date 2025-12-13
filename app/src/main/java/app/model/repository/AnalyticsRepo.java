@@ -237,6 +237,13 @@ public class AnalyticsRepo {
     public record ReliefDailyRow(LocalDate day, String category, int pos, int neg, int net) {}
 
     public List<ReliefDailyRow> readReliefDaily(String runId) {
+        // First try: relief_sentiment_daily table (pre-aggregated)
+        final String qSentimentDaily =
+            "SELECT bucket_start AS date, item AS category, pos, neg, (pos - neg) AS net FROM relief_sentiment_daily " +
+            "WHERE run_id = ? ORDER BY bucket_start, item";
+        var fromSentimentDaily = tryQueryReliefDaily(runId, qSentimentDaily, null, null);
+        if (!fromSentimentDaily.isEmpty()) return fromSentimentDaily;
+
         final String qDaily =
             "SELECT date, category, pos, neg, net FROM relief_daily " +
             "WHERE run_id = ? ORDER BY date, category";
@@ -271,6 +278,13 @@ public class AnalyticsRepo {
     }
 
     public List<ReliefDailyRow> readReliefDaily(String runId, LocalDate from, LocalDate to) {
+        // First try: relief_sentiment_daily table (pre-aggregated) with date filtering
+        final String qSentimentDaily =
+            "SELECT bucket_start AS date, item AS category, pos, neg, (pos - neg) AS net FROM relief_sentiment_daily " +
+            "WHERE run_id = ? AND bucket_start BETWEEN ? AND ? ORDER BY bucket_start, item";
+        var fromSentimentDaily = tryQueryReliefDaily(runId, qSentimentDaily, from, to);
+        if (!fromSentimentDaily.isEmpty()) return fromSentimentDaily;
+
         final String qDaily =
             "SELECT date, category, pos, neg, net FROM relief_daily " +
             "WHERE run_id = ? AND date BETWEEN ? AND ? ORDER BY date, category";
