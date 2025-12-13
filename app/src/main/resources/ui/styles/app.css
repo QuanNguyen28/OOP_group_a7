@@ -18,10 +18,10 @@
    ───────────────────────────────────────────────────────────────────── */
 .button {
   -fx-background-color: -color-surface-elevated;
-  -fx-background-radius: -radius-lg;
+  -fx-background-radius: 18px;
   -fx-border-color: -color-outline;
   -fx-border-width: 1.5px;
-  -fx-border-radius: -radius-lg;
+  -fx-border-radius: 18px;
   -fx-padding: 12px 24px;
   -fx-text-fill: -on-surface;
   -fx-font-weight: 600;
@@ -67,7 +67,7 @@
   -fx-background-color: transparent;
   -fx-border-color: -color-outline;
   -fx-padding: 10px 18px;
-  -fx-border-radius: -radius-lg;
+  -fx-border-radius: 18px;
   -fx-effect: none;
 }
 
@@ -82,8 +82,8 @@
    ───────────────────────────────────────────────────────────────────── */
 .card {
   -fx-background-color: -color-surface-elevated;
-  -fx-background-radius: -radius-xl;
-  -fx-border-radius: -radius-xl;
+  -fx-background-radius: 24px;
+  -fx-border-radius: 24px;
   -fx-border-color: -color-outline;
   -fx-border-width: 1px;
   -fx-padding: -space-6;
@@ -96,8 +96,8 @@
 
 .card-hero {
   -fx-background-color: linear-gradient(to bottom right, -color-primary-solid, -color-accent);
-  -fx-background-radius: -radius-xl;
-  -fx-border-radius: -radius-xl;
+  -fx-background-radius: 24px;
+  -fx-border-radius: 24px;
   -fx-padding: -space-8;
   -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.35), 26, 0, 0, 10);
 }
@@ -108,10 +108,10 @@
 .text-field,
 .text-area {
   -fx-background-color: -color-surface;
-  -fx-background-radius: -radius-lg;
+  -fx-background-radius: 18px;
   -fx-border-color: -color-outline-variant;
   -fx-border-width: 1.5px;
-  -fx-border-radius: -radius-lg;
+  -fx-border-radius: 18px;
   -fx-padding: 12px 16px;
   -fx-text-fill: -on-surface;
   -fx-prompt-text-fill: -on-surface-variant;
@@ -138,9 +138,9 @@
    ───────────────────────────────────────────────────────────────────── */
 .date-picker {
   -fx-background-color: -color-surface;
-  -fx-background-radius: -radius-lg;
+  -fx-background-radius: 18px;
   -fx-border-color: -color-outline-variant;
-  -fx-border-radius: -radius-lg;
+  -fx-border-radius: 18px;
   -fx-border-width: 1.5px;
 }
 
@@ -153,13 +153,13 @@
 .date-picker .text-field {
   -fx-background-color: transparent;
   -fx-border-width: 0;
-  -fx-background-radius: -radius-lg;
+  -fx-background-radius: 18px;
 }
 
 .date-picker-popup {
   -fx-background-color: -color-surface-elevated;
   -fx-border-color: -color-outline;
-  -fx-border-radius: -radius-xl;
+  -fx-border-radius: 24px;
   -fx-effect: -shadow-lg;
 }
 
@@ -168,10 +168,10 @@
    ───────────────────────────────────────────────────────────────────── */
 .combo-box {
   -fx-background-color: -color-surface;
-  -fx-background-radius: -radius-lg;
+  -fx-background-radius: 18px;
   -fx-border-color: -color-outline-variant;
   -fx-border-width: 1.5px;
-  -fx-border-radius: -radius-lg;
+  -fx-border-radius: 18px;
   -fx-padding: 10px 14px;
 }
 
@@ -184,7 +184,7 @@
 .combo-box-popup .list-view {
   -fx-background-color: -color-surface-elevated;
   -fx-border-color: -color-outline;
-  -fx-border-radius: -radius-xl;
+  -fx-border-radius: 24px;
   -fx-effect: -shadow-lg;
 }
 
@@ -208,7 +208,7 @@
 
 .primary-tabs .tab {
   -fx-background-color: transparent;
-  -fx-background-radius: -radius-md -radius-md 0 0;
+  -fx-background-radius: 14px 14px 0 0;
   -fx-padding: 12px 24px;
   -fx-border-width: 0;
 }
@@ -259,16 +259,16 @@
 
 .chart-legend {
   -fx-background-color: -color-surface-elevated;
-  -fx-background-radius: -radius-md;
+  -fx-background-radius: 14px;
   -fx-padding: -space-3;
   -fx-border-color: -color-outline;
   -fx-border-width: 1px;
-  -fx-border-radius: -radius-md;
+  -fx-border-radius: 14px;
 }
 
 .chart-legend-item-symbol {
   -fx-padding: 8px;
-  -fx-background-radius: -radius-sm;
+  -fx-background-radius: 10px;
 }
 
 .chart-legend-item-text {
@@ -315,13 +315,13 @@
   -fx-background-color: -color-surface-elevated;
   -fx-border-color: -color-outline;
   -fx-border-width: 1px;
-  -fx-border-radius: -radius-md;
-  -fx-background-radius: -radius-md;
+  -fx-border-radius: 14px;
+  -fx-background-radius: 14px;
 }
 
 .titled-pane > .title {
   -fx-background-color: derive(-color-surface-elevated, 5%);
-  -fx-background-radius: -radius-md -radius-md 0 0;
+  -fx-background-radius: 14px 14px 0 0;
   -fx-padding: -space-3 -space-4;
   -fx-font-weight: 600;
   -fx-text-fill: -on-surface;
@@ -390,8 +390,8 @@
 
 .scroll-bar .thumb {
   -fx-background-color: derive(-color-outline, -20%);
-  -fx-background-radius: -radius-full;
-  -fx-border-radius: -radius-full;
+  -fx-background-radius: 9999px;
+  -fx-border-radius: 9999px;
 }
 
 .scroll-bar .thumb:hover {
@@ -407,13 +407,13 @@
    ───────────────────────────────────────────────────────────────────── */
 .progress-bar {
   -fx-background-color: -color-outline;
-  -fx-background-radius: -radius-full;
+  -fx-background-radius: 9999px;
   -fx-padding: 2px;
 }
 
 .progress-bar > .bar {
   -fx-background-color: -color-primary-solid;
-  -fx-background-radius: -radius-full;
+  -fx-background-radius: 9999px;
   -fx-background-insets: 0;
   -fx-padding: 4px;
 }
@@ -427,7 +427,7 @@
   -fx-text-fill: -on-surface-variant;
   -fx-font-weight: 500;
   -fx-padding: 12px 16px;
-  -fx-background-radius: -radius-md;
+  -fx-background-radius: 14px;
   -fx-cursor: hand;
 }
 

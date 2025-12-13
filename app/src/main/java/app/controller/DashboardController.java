@@ -62,11 +62,9 @@ public class DashboardController {
     // Store initial range from RunController
     private LocalDate initialFromDate = null;
     private LocalDate initialToDate = null;
-    private ShellController shellController;
 
     public void setRun(String runId) { this.runId = runId; }
     public void setAnalyticsRepo(AnalyticsRepo repo) { this.analyticsRepo = repo; }
-    public void setShellController(ShellController shell) { this.shellController = shell; }
     public void setInitialRange(LocalDate from, LocalDate to) {
         this.initialFromDate = from;
         this.initialToDate = to;

@@ -28,11 +28,6 @@ public class RunController {
 
     private PipelineService pipeline;
     private String lastRunId;
-    private ShellController shellController;
-
-    public void setShellController(ShellController shell) {
-        this.shellController = shell;
-    }
 
     @FXML
     public void initialize() {
@@ -102,23 +97,7 @@ public class RunController {
     }
 
     private void openDashboard(PipelineService pipeline, String runId) {
-        // Nếu có ShellController, dùng nó để navigate
-        if (shellController != null) {
-            DashboardController ctrl = shellController.getDashboardController();
-            if (ctrl != null) {
-                ctrl.setRun(runId);
-                java.time.LocalDate initFrom = (fromDate != null) ? fromDate.getValue() : null;
-                java.time.LocalDate initTo   = (toDate   != null) ? toDate.getValue()   : null;
-                if (initFrom != null || initTo != null) {
-                    ctrl.setInitialRange(initFrom, initTo);
-                }
-                ctrl.loadData();
-            }
-            shellController.showDashboardScreenPublic();
-            return;
-        }
-
-        // Fallback: mở window mới
+        // Open Dashboard in a new window
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/fxml/dashboard.fxml"));
             Parent root = loader.load();
@@ -133,8 +112,15 @@ public class RunController {
                 ctrl.loadData();
             }
 
+            // Open Dashboard in a new window instead of replacing the current one
+            Stage st = new Stage();
+            
+            // Set the Run window as owner so Dashboard appears on top
             javafx.stage.Window w = runBtn != null && runBtn.getScene() != null ? runBtn.getScene().getWindow() : null;
-            Stage st = (w instanceof Stage) ? (Stage) w : new Stage();
+            if (w instanceof Stage) {
+                st.initOwner((Stage) w);
+            }
+            
             Scene scene = new Scene(root, 1200, 720);
             scene.getStylesheets().addAll(
                 getClass().getResource("/ui/styles/tokens.css").toExternalForm(),
