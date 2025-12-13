@@ -4,12 +4,15 @@ import app.model.service.insight.LlmClientFactory;
 import app.model.repository.AnalyticsRepo;
 import app.model.repository.SQLite;
 import app.model.service.nlp.LocalNlpModel;
+import app.util.ReliefItemTranslator;
 import javafx.fxml.FXML;
 import javafx.scene.chart.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
 import app.model.service.insight.InsightConfig;
 import app.model.service.insight.InsightService;
 import app.model.service.insight.LocalEchoLlmClient;
@@ -29,6 +32,7 @@ import java.util.function.Supplier;
 
 public class DashboardController {
 
+    @FXML private Button backBtn;
     @FXML private LineChart<String, Number> overallChart;
     @FXML private Label overallSubtitle;
     @FXML private BarChart<String, Number> damageChart;
@@ -58,9 +62,11 @@ public class DashboardController {
     // Store initial range from RunController
     private LocalDate initialFromDate = null;
     private LocalDate initialToDate = null;
+    private ShellController shellController;
 
     public void setRun(String runId) { this.runId = runId; }
     public void setAnalyticsRepo(AnalyticsRepo repo) { this.analyticsRepo = repo; }
+    public void setShellController(ShellController shell) { this.shellController = shell; }
     public void setInitialRange(LocalDate from, LocalDate to) {
         this.initialFromDate = from;
         this.initialToDate = to;
@@ -71,6 +77,14 @@ public class DashboardController {
         this.runId = runId;
         this.analyticsRepo = repo;
         loadData();
+    }
+
+    @FXML
+    private void onGoBack() {
+        // Close the Dashboard window to return to the Run screen
+        if (backBtn != null && backBtn.getScene() != null && backBtn.getScene().getWindow() != null) {
+            backBtn.getScene().getWindow().hide();
+        }
     }
 
     public void loadData() {
@@ -295,14 +309,14 @@ public class DashboardController {
         LocalDate selTo   = dpTo   != null ? dpTo.getValue()   : null;
         // Validate range
         if (selFrom != null && selTo != null && selFrom.isAfter(selTo)) {
-            if (overallSubtitle != null) overallSubtitle.setText("Invalid range: From > To");
+            if (overallSubtitle != null) overallSubtitle.setText("Phạm vi không hợp lệ: Từ > Đến");
             return;
         }
         System.out.println("[Dashboard] loadOverview range from=" + selFrom + " to=" + selTo + " (run=" + runId + ")");
         var rows = (selFrom != null || selTo != null) ? queryOverall(runId, selFrom, selTo) : queryOverall(runId);
-        XYChart.Series<String, Number> sPos = new XYChart.Series<>(); sPos.setName("Positive");
-        XYChart.Series<String, Number> sNeg = new XYChart.Series<>(); sNeg.setName("Negative");
-        XYChart.Series<String, Number> sNeu = new XYChart.Series<>(); sNeu.setName("Neutral");
+        XYChart.Series<String, Number> sPos = new XYChart.Series<>(); sPos.setName("Tích Cực");
+        XYChart.Series<String, Number> sNeg = new XYChart.Series<>(); sNeg.setName("Tiêu Cực");
+        XYChart.Series<String, Number> sNeu = new XYChart.Series<>(); sNeu.setName("Trung Lập");
         int total = 0;
         for (var r : rows) {
             sPos.getData().add(new XYChart.Data<>(r.dayIso, r.pos));
@@ -315,17 +329,17 @@ public class DashboardController {
         overallChart.getData().addAll(sPos, sNeg, sNeu);
         if (overallSubtitle != null) {
             if (rows.isEmpty()) {
-                overallSubtitle.setText("No data for run: " + runId);
+                overallSubtitle.setText("Không có dữ liệu cho lần chạy: " + runId);
             } else {
                 String displayedRange;
                 if (selFrom != null || selTo != null) {
                     String f = (selFrom != null) ? selFrom.toString() : fromDay;
                     String t = (selTo   != null) ? selTo.toString()   : toDay;
-                    displayedRange = " | Range: " + f + " → " + t;
+                    displayedRange = " | Phạm vi: " + f + " → " + t;
                 } else {
-                    displayedRange = (fromDay != null && toDay != null) ? (" | Range: " + fromDay + " → " + toDay) : "";
+                    displayedRange = (fromDay != null && toDay != null) ? (" | Phạm vi: " + fromDay + " → " + toDay) : "";
                 }
-                overallSubtitle.setText("Total analyzed posts: " + total + " (run=" + runId + ")" + displayedRange);
+                overallSubtitle.setText("Tổng bài viết phân tích: " + total + " (lần chạy=" + runId + ")" + displayedRange);
                 System.out.println("[Dashboard] loadOverview rows=" + rows.size() + " first=" + fromDay + " last=" + toDay);
             }
         }
@@ -362,7 +376,7 @@ public class DashboardController {
         damageChart.getData().clear();
         var rows = queryDamage(runId);
         XYChart.Series<String, Number> s = new XYChart.Series<>();
-        s.setName("Damage Types");
+        s.setName("Loại Thiệt Hại");
         for (var r : rows) s.getData().add(new XYChart.Data<>(r.tag, r.cnt));
         damageChart.getData().add(s);
     }
@@ -391,7 +405,7 @@ public class DashboardController {
         if (reliefPie == null) return;
         reliefPie.getData().clear();
         var rows = queryRelief(runId);
-        for (var r : rows) reliefPie.getData().add(new PieChart.Data(r.tag, r.cnt));
+        for (var r : rows) reliefPie.getData().add(new PieChart.Data(ReliefItemTranslator.translate(r.tag), r.cnt));
     }
 
     private void loadTask3() {
@@ -405,15 +419,16 @@ public class DashboardController {
         ordered.sort((a,b) -> Integer.compare(
                 (b.getValue()[0]+b.getValue()[1]+b.getValue()[2]),
                 (a.getValue()[0]+a.getValue()[1]+a.getValue()[2])));
-        XYChart.Series<String, Number> sPos = new XYChart.Series<>(); sPos.setName("Positive");
-        XYChart.Series<String, Number> sNeg = new XYChart.Series<>(); sNeg.setName("Negative");
-        XYChart.Series<String, Number> sNeu = new XYChart.Series<>(); sNeu.setName("Neutral");
+        XYChart.Series<String, Number> sPos = new XYChart.Series<>(); sPos.setName("Tích Cực");
+        XYChart.Series<String, Number> sNeg = new XYChart.Series<>(); sNeg.setName("Tiêu Cực");
+        XYChart.Series<String, Number> sNeu = new XYChart.Series<>(); sNeu.setName("Trung Lập");
         for (var e : ordered) {
             String item = e.getKey();
+            String translatedItem = ReliefItemTranslator.translate(item);
             int[] v = e.getValue();
-            sPos.getData().add(new XYChart.Data<>(item, v[0]));
-            sNeg.getData().add(new XYChart.Data<>(item, v[1]));
-            sNeu.getData().add(new XYChart.Data<>(item, v[2]));
+            sPos.getData().add(new XYChart.Data<>(translatedItem, v[0]));
+            sNeg.getData().add(new XYChart.Data<>(translatedItem, v[1]));
+            sNeu.getData().add(new XYChart.Data<>(translatedItem, v[2]));
         }
         task3Chart.getData().addAll(sPos, sNeg, sNeu);
     }
@@ -483,8 +498,9 @@ public class DashboardController {
         }
         for (var itemEntry : timeSeries.entrySet()) {
             String item = itemEntry.getKey();
+            String translatedItem = ReliefItemTranslator.translate(item);
             XYChart.Series<String, Number> series = new XYChart.Series<>();
-            series.setName(item);
+            series.setName(translatedItem);
             for (var dateEntry : itemEntry.getValue().entrySet()) {
                 List<Double> scores = dateEntry.getValue();
                 double avg = scores.stream().mapToDouble(d -> d).average().orElse(0.0);
@@ -640,41 +656,41 @@ public class DashboardController {
         double posPct = total == 0 ? 0 : (pos * 100.0 / total);
         double negPct = total == 0 ? 0 : (neg * 100.0 / total);
         return """
-            Overall Sentiment (fallback)
-            Run: %s | Range: %s
-            Total analyzed posts: %d
-            Positive: %d (%.1f%%)
-            Negative: %d (%.1f%%)
-            Neutral : %d (%.1f%%)
-            Key take: Overall mood is %s.
+            Tổng Quan Cảm Xúc (cơ chế dự phòng)
+            Lần chạy: %s | Phạm vi: %s
+            Tổng bài viết phân tích: %d
+            Tích cực: %d (%.1f%%)
+            Tiêu cực: %d (%.1f%%)
+            Trung lập: %d (%.1f%%)
+            Kết luận: Tâm trạng chung là %s.
             """.formatted(
                 runId, range, total, pos, posPct, neg, negPct, neu, total==0?0.0:(neu*100.0/total),
-                (posPct >= negPct ? "more positive than negative" : "more negative than positive")
+                (posPct >= negPct ? "tích cực hơn tiêu cực" : "tiêu cực hơn tích cực")
             );
     }
 
     private String summarizeDamageFallback() {
         var rows = queryDamage(runId);
-        if (rows.isEmpty()) return "No damage records for run: " + runId;
+        if (rows.isEmpty()) return "Không có hồ sơ thiệt hại cho lần chạy: " + runId;
         int total = rows.stream().mapToInt(r -> r.cnt).sum();
         var top3 = rows.stream().limit(3).collect(Collectors.toList());
         StringBuilder sb = new StringBuilder();
-        sb.append("Damage Summary (fallback)\n");
-        sb.append("Run: ").append(runId).append("\n");
-        sb.append("Total damage mentions: ").append(total).append("\n");
-        sb.append("Top categories:\n");
+        sb.append("Tóm Tắt Thiệt Hại (cơ chế dự phòng)\n");
+        sb.append("Lần chạy: ").append(runId).append("\n");
+        sb.append("Tổng đề cập thiệt hại: ").append(total).append("\n");
+        sb.append("Hạng mục hàng đầu:\n");
         for (var r : top3) sb.append(" - ").append(r.tag).append(": ").append(r.cnt).append("\n");
         return sb.toString();
     }
 
     private String summarizeReliefFallback() {
         var rows = queryRelief(runId);
-        if (rows.isEmpty()) return "No relief item records for run: " + runId;
+        if (rows.isEmpty()) return "Không có hạng mục cứu trợ cho lần chạy: " + runId;
         int total = rows.stream().mapToInt(r -> r.cnt).sum();
         var top3 = rows.stream().limit(3).collect(Collectors.toList());
         StringBuilder sb = new StringBuilder();
-        sb.append("Relief Items Summary (fallback)\n");
-        sb.append("Run: ").append(runId).append("\n");
+        sb.append("Tóm Tắt Hạng Mục Cứu Trợ (cơ chế dự phòng)\n");
+        sb.append("Lần chạy: ").append(runId).append("\n");
         sb.append("Total relief-related posts: ").append(total).append("\n");
         sb.append("Most discussed items:\n");
         for (var r : top3) sb.append(" - ").append(r.tag).append(": ").append(r.cnt).append("\n");
@@ -684,17 +700,17 @@ public class DashboardController {
     private String summarizeTask3Fallback(LocalDate from, LocalDate to) {
         List<RawPost> posts = fetchRawPosts(runId, from, to);
         Map<String, int[]> stats = computeTask3Stats(posts);
-        if (stats.isEmpty()) return "No satisfaction data in the selected range.";
+        if (stats.isEmpty()) return "Không có dữ liệu hài lòng trong phạm vi được chọn.";
         var byNeg = stats.entrySet().stream().sorted((a,b) -> Integer.compare(b.getValue()[1], a.getValue()[1])).limit(3).toList();
         var byPos = stats.entrySet().stream().sorted((a,b) -> Integer.compare(b.getValue()[0], a.getValue()[0])).limit(3).toList();
         StringBuilder sb = new StringBuilder();
-        sb.append("Task 3 — Satisfaction by Category (fallback)\n");
-        if (from != null || to != null) sb.append("Range: ").append(from).append(" → ").append(to).append("\n");
-        sb.append("Most negative sentiment:\n");
-        for (var e : byNeg) { int[] v = e.getValue(); sb.append(" - ").append(e.getKey()).append(": neg=").append(v[1]).append(", pos=").append(v[0]).append(", neu=").append(v[2]).append("\n"); }
-        sb.append("Most positive sentiment:\n");
-        for (var e : byPos) { int[] v = e.getValue(); sb.append(" - ").append(e.getKey()).append(": pos=").append(v[0]).append(", neg=").append(v[1]).append(", neu=").append(v[2]).append("\n"); }
-        sb.append("Implication: Prioritize resources for categories with persistent negatives; maintain/scale efforts for positive ones.");
+        sb.append("Task 3 — Mức Độ Hài Lòng Theo Hạng Mục (cơ chế dự phòng)\n");
+        if (from != null || to != null) sb.append("Phạm vi: ").append(from).append(" → ").append(to).append("\n");
+        sb.append("Cảm xúc tiêu cực nhất:\n");
+        for (var e : byNeg) { int[] v = e.getValue(); sb.append(" - ").append(ReliefItemTranslator.translate(e.getKey())).append(": neg=").append(v[1]).append(", pos=").append(v[0]).append(", neu=").append(v[2]).append("\n"); }
+        sb.append("Cảm xúc tích cực nhất:\n");
+        for (var e : byPos) { int[] v = e.getValue(); sb.append(" - ").append(ReliefItemTranslator.translate(e.getKey())).append(": pos=").append(v[0]).append(", neg=").append(v[1]).append(", neu=").append(v[2]).append("\n"); }
+        sb.append("Kết luận: Ưu tiên tài nguyên cho các hạng mục có cảm xúc âm bền vững; duy trì/mở rộng nỗ lực cho những hạng mục tích cực.");
         return sb.toString();
     }
 
@@ -729,23 +745,23 @@ public class DashboardController {
         var positive = agg.entrySet().stream().filter(x -> x.getValue().avg > 0.05).map(Map.Entry::getKey).toList();
         var negative = agg.entrySet().stream().filter(x -> x.getValue().avg < -0.05).map(Map.Entry::getKey).toList();
         StringBuilder sb = new StringBuilder();
-        sb.append("Task 4 — Sentiment over Time per Category (fallback)\n");
-        if (from != null || to != null) sb.append("Range: ").append(from).append(" → ").append(to).append("\n");
-        sb.append("Categories improving: ").append(improving.isEmpty()? "—" : String.join(", ", improving)).append("\n");
-        sb.append("Categories worsening: ").append(worsening.isEmpty()? "—" : String.join(", ", worsening)).append("\n");
-        sb.append("Average positive sentiment: ").append(positive.isEmpty()? "—" : String.join(", ", positive)).append("\n");
-        sb.append("Average negative sentiment: ").append(negative.isEmpty()? "—" : String.join(", ", negative)).append("\n");
-        sb.append("Interpretation: Focus on consistently negative or worsening categories (e.g., housing/transport), sustain efforts where averages are positive (e.g., food/medical).");
+        sb.append("Task 4 — Diễn Biến Cảm Xúc Theo Thời Gian (cơ chế dự phòng)\n");
+        if (from != null || to != null) sb.append("Phạm vi: ").append(from).append(" → ").append(to).append("\n");
+        sb.append("Hạng mục cải thiện: ").append(improving.isEmpty()? "—" : improving.stream().map(ReliefItemTranslator::translate).collect(Collectors.joining(", "))).append("\n");
+        sb.append("Hạng mục xấu đi: ").append(worsening.isEmpty()? "—" : worsening.stream().map(ReliefItemTranslator::translate).collect(Collectors.joining(", "))).append("\n");
+        sb.append("Cảm xúc tích cực trung bình: ").append(positive.isEmpty()? "—" : positive.stream().map(ReliefItemTranslator::translate).collect(Collectors.joining(", "))).append("\n");
+        sb.append("Cảm xúc tiêu cực trung bình: ").append(negative.isEmpty()? "—" : negative.stream().map(ReliefItemTranslator::translate).collect(Collectors.joining(", "))).append("\n");
+        sb.append("Nhận xét: Tập trung vào các hạng mục liên tục âm tính hoặc xấu đi (ví dụ: nhà ở/vận tải), duy trì nỗ lực nơi trung bình tích cực (ví dụ: thực phẩm/y tế).");
         return sb.toString();
     }
 
     @FXML
     private void initialize() {
-        if (overallChart != null) overallChart.setTitle("Overall Sentiment (Daily)");
-        if (damageChart != null)  damageChart.setTitle("Damage Types");
-        if (reliefPie != null)    reliefPie.setTitle("Relief Items Distribution");
-        if (task3Chart != null)   task3Chart.setTitle("Satisfaction by Relief Category");
-        if (task4Chart != null)   task4Chart.setTitle("Sentiment Over Time per Category");
+        if (overallChart != null) overallChart.setTitle("Tổng Quan Cảm Xúc (Hàng Ngày)");
+        if (damageChart != null)  damageChart.setTitle("Loại Thiệt Hại");
+        if (reliefPie != null)    reliefPie.setTitle("Phân Bố Hạng Mục Cứu Trợ");
+        if (task3Chart != null)   task3Chart.setTitle("Mức Độ Hài Lòng Theo Hạng Mục");
+        if (task4Chart != null)   task4Chart.setTitle("Diễn Biến Cảm Xúc Theo Thời Gian");
     }
 
     private record RawPost(String text, String date) {}

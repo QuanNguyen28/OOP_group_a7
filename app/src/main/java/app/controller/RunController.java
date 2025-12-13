@@ -28,11 +28,16 @@ public class RunController {
 
     private PipelineService pipeline;
     private String lastRunId;
+    private ShellController shellController;
+
+    public void setShellController(ShellController shell) {
+        this.shellController = shell;
+    }
 
     @FXML
     public void initialize() {
         this.pipeline = PipelineService.createDefault();
-        if (statusLabel != null) statusLabel.setText("Ready");
+        if (statusLabel != null) statusLabel.setText("Sẵn sàng");
         if (keywordField != null) keywordField.setOnAction(e -> onRunIngest());
     }
 
@@ -77,8 +82,8 @@ public class RunController {
             RunResult result = job.getValue();
             lastRunId = result.runId;
             if (statusLabel != null) {
-                statusLabel.setText("Ingested: " + result.ingested +
-                        " | Analyzed: " + result.analyzed + " ✓ (run=" + lastRunId + ")");
+                statusLabel.setText("Nhập: " + result.ingested +
+                        " | Phân tích: " + result.analyzed + " ✓ (run=" + lastRunId + ")");
             }
             openDashboard(pipeline, lastRunId);
             if (runBtn != null) runBtn.setDisable(false);
@@ -87,7 +92,7 @@ public class RunController {
         job.setOnFailed(ev -> {
             Throwable e = job.getException();
             e.printStackTrace();
-            if (statusLabel != null) statusLabel.setText("Lỗi chạy pipeline: " + (e != null ? e.getMessage() : "unknown"));
+            if (statusLabel != null) statusLabel.setText("Lỗi chạy pipeline: " + (e != null ? e.getMessage() : "không xác định"));
             if (runBtn != null) runBtn.setDisable(false);
         });
 
@@ -97,13 +102,29 @@ public class RunController {
     }
 
     private void openDashboard(PipelineService pipeline, String runId) {
+        // Nếu có ShellController, dùng nó để navigate
+        if (shellController != null) {
+            DashboardController ctrl = shellController.getDashboardController();
+            if (ctrl != null) {
+                ctrl.setRun(runId);
+                java.time.LocalDate initFrom = (fromDate != null) ? fromDate.getValue() : null;
+                java.time.LocalDate initTo   = (toDate   != null) ? toDate.getValue()   : null;
+                if (initFrom != null || initTo != null) {
+                    ctrl.setInitialRange(initFrom, initTo);
+                }
+                ctrl.loadData();
+            }
+            shellController.showDashboardScreenPublic();
+            return;
+        }
+
+        // Fallback: mở window mới
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/fxml/dashboard.fxml"));
             Parent root = loader.load();
             DashboardController ctrl = loader.getController();
             if (ctrl != null) {
                 ctrl.setRun(runId);
-                // Nếu người dùng đã chọn khoảng thời gian ở màn Run → áp dụng cho Dashboard
                 java.time.LocalDate initFrom = (fromDate != null) ? fromDate.getValue() : null;
                 java.time.LocalDate initTo   = (toDate   != null) ? toDate.getValue()   : null;
                 if (initFrom != null || initTo != null) {
@@ -119,12 +140,12 @@ public class RunController {
                 getClass().getResource("/ui/styles/tokens.css").toExternalForm(),
                 getClass().getResource("/ui/styles/app.css").toExternalForm()
             );
-            st.setTitle("Dashboard");
+            st.setTitle("Bảng Điều Khiển");
             st.setScene(scene);
             st.show();
         } catch (Exception e) {
             e.printStackTrace();
-            if (statusLabel != null) statusLabel.setText("Open Dashboard failed: " + e.getMessage());
+            if (statusLabel != null) statusLabel.setText("Không thể mở Bảng Điều Khiển: " + e.getMessage());
         }
     }
 
@@ -151,7 +172,14 @@ public class RunController {
                 }
             }
 
-            Stage owner = (Stage) runBtn.getScene().getWindow();
+            Stage owner = null;
+            // Thử lấy owner từ các button/field có sẵn
+            if (runBtn != null && runBtn.getScene() != null && runBtn.getScene().getWindow() instanceof Stage) {
+                owner = (Stage) runBtn.getScene().getWindow();
+            } else if (statusLabel != null && statusLabel.getScene() != null && statusLabel.getScene().getWindow() instanceof Stage) {
+                owner = (Stage) statusLabel.getScene().getWindow();
+            }
+            
             Scene scene = new Scene(root, 900, 600);
             scene.getStylesheets().addAll(
                 getClass().getResource("/ui/styles/tokens.css").toExternalForm(),
@@ -159,13 +187,13 @@ public class RunController {
             );
 
             Stage st = new Stage();
-            st.setTitle("Collect Data");
-            st.initOwner(owner);
+            st.setTitle("Thu Thập Dữ Liệu");
+            if (owner != null) st.initOwner(owner);
             st.setScene(scene);
             st.show();
         } catch (Exception e) {
             e.printStackTrace();
-            Alert a = new Alert(AlertType.ERROR, "Open Collector failed: " + e.getMessage(), ButtonType.OK);
+            Alert a = new Alert(AlertType.ERROR, "Không thể mở Thu Thập Dữ Liệu: " + e.getMessage(), ButtonType.OK);
             a.setHeaderText(null);
             a.showAndWait();
         }

@@ -119,7 +119,8 @@ public class FileConnector implements SocialConnector {
 
             String id        = stringOr(nodeGet(n, "id"), uuid());
             String text      = stringOr(nodeGet(n, "text"), "");
-            String createdAt = stringOr(nodeGet(n, "createdAt"), null);
+            // Ưu tiên ts, sau đó createdAt
+            String createdAt = stringOr(nodeGet(n, "ts"), stringOr(nodeGet(n, "createdAt"), null));
 
             String platform  = stringOr(nodeGet(n, "platform"), null);
             String lang      = stringOr(nodeGet(n, "lang"), null);

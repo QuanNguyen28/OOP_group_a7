@@ -6,48 +6,128 @@
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="app.controller.RunController">
+            fx:controller="app.controller.RunController"
+            styleClass="page"
+            style="-fx-background-color: #f5f5f5;">
 
-    <!-- Thanh công cụ trên cùng -->
-    <top>
-        <ToolBar>
-            <items>
-                <Label text="Humanitarian Analytics (Offline)"/>
-                <Separator orientation="VERTICAL"/>
-
-                <Label text="Keyword:"/>
-                <TextField fx:id="keywordField"
-                           promptText="ví dụ: yagi, ragasa, cuu tro"
-                           prefWidth="280"/>
-
-                <Separator orientation="VERTICAL"/>
-                <Label text="From:"/>
-                <DatePicker fx:id="fromDate" promptText="yyyy-MM-dd"/>
-                <Label text="To:"/>
-                <DatePicker fx:id="toDate" promptText="yyyy-MM-dd"/>
-
-                <Button fx:id="runBtn" text="Run Ingest" onAction="#onRunIngest">
-                    <tooltip><Tooltip text="Nạp &amp; phân tích dữ liệu theo từ khóa"/></tooltip>
-                </Button>
-                <Button text="Open Dashboard" onAction="#onOpenLastDashboard">
-                    <tooltip><Tooltip text="Mở dashboard gần nhất"/></tooltip>
-                </Button>
-                <Button text="Collector…" onAction="#onOpenCollector">
-                    <tooltip><Tooltip text="Mở cửa sổ thu thập dữ liệu (news, YouTube, Reddit)"/></tooltip>
-                </Button>
-                <!-- Spacer giãn sang phải: dùng thuộc tính HBox.hgrow -->
-                <Pane HBox.hgrow="ALWAYS"/>
-
-                <Label fx:id="dbLabel" text="DB: …" style="-fx-opacity: 0.7;"/>
-            </items>
-        </ToolBar>
-    </top>
-
-    <!-- Nội dung trung tâm -->
+    <!-- Content Wrapper - Centered Card -->
     <center>
-        <VBox spacing="12.0" alignment="CENTER">
-            <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
-            <Label fx:id="statusLabel" text="Ready"/>
+        <VBox alignment="TOP_CENTER" style="-fx-background-color: #f5f5f5; -fx-padding: 40 0;">
+            
+            <!-- Main Card Container -->
+            <VBox spacing="0" style="-fx-background-color: white; -fx-background-radius: 24; -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 24, 0, 0, 8); -fx-max-width: 850; -fx-min-width: 850;">
+                
+                <!-- Header Section with Icon -->
+                <VBox spacing="16" alignment="CENTER" style="-fx-padding: 56 40 40 40;">
+                    <Label text="🌍" style="-fx-font-size: 64px;"/>
+                    <Label text="Phân Tích Thảm Họa" style="-fx-font-size: 32px; -fx-font-weight: 700; -fx-text-fill: #047857;"/>
+                    <Label text="Humanitarian Analytics Powered by AI" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+                </VBox>
+                
+                <!-- Form Content -->
+                <VBox spacing="20" style="-fx-padding: 0 48 48 48;">
+                    
+                    <!-- Search Input -->
+                    <VBox spacing="10">
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label text="🔍" style="-fx-font-size: 16px;"/>
+                            <Label text="Từ Khóa Tìm Kiếm" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #374151;"/>
+                        </HBox>
+                        <TextField fx:id="keywordField"
+                                   promptText=""
+                                   prefHeight="48"
+                                   style="-fx-font-size: 14px; -fx-padding: 12 16; -fx-background-color: white; -fx-background-radius: 10; -fx-border-radius: 10; -fx-border-width: 1.5; -fx-border-color: #d1d5db;"/>
+                        <Label text="💡 Hệ thống tự động mở rộng từ khóa với các biến thể (#hashtag, 'bão...', v.v.)" 
+                               style="-fx-font-size: 11px; -fx-text-fill: #9ca3af; -fx-padding: 4 0 0 0;"/>
+                    </VBox>
+                    
+                    <!-- Date Range Section -->
+                    <HBox spacing="20" alignment="CENTER">
+                        <!-- From Date -->
+                        <VBox spacing="10" HBox.hgrow="ALWAYS">
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <Label text="📅" style="-fx-font-size: 14px;"/>
+                                <Label text="Từ Ngày" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #374151;"/>
+                            </HBox>
+                            <DatePicker fx:id="fromDate" 
+                                        promptText="yyyy-MM-dd"
+                                        prefHeight="48"
+                                        maxWidth="Infinity"
+                                        style="-fx-font-size: 13px; -fx-padding: 12 14; -fx-background-color: white; -fx-background-radius: 10; -fx-border-radius: 10; -fx-border-width: 1.5; -fx-border-color: #d1d5db;"/>
+                        </VBox>
+                        
+                        <!-- Arrow -->
+                        <Label text="→" style="-fx-font-size: 20px; -fx-text-fill: #d1d5db; -fx-padding: 28 0 0 0;"/>
+                        
+                        <!-- To Date -->
+                        <VBox spacing="10" HBox.hgrow="ALWAYS">
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <Label text="📅" style="-fx-font-size: 14px;"/>
+                                <Label text="Đến Ngày" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #374151;"/>
+                            </HBox>
+                            <DatePicker fx:id="toDate" 
+                                        promptText="yyyy-MM-dd"
+                                        prefHeight="48"
+                                        maxWidth="Infinity"
+                                        style="-fx-font-size: 13px; -fx-padding: 12 14; -fx-background-color: white; -fx-background-radius: 10; -fx-border-radius: 10; -fx-border-width: 1.5; -fx-border-color: #d1d5db;"/>
+                        </VBox>
+                    </HBox>
+                    
+                    <!-- Action Buttons - 3 Columns -->
+                    <HBox spacing="12" style="-fx-padding: 16 0 0 0;">
+                        <!-- Primary Button - Run Analysis -->
+                        <Button fx:id="runBtn" 
+                                text="▶ Chạy Phân Tích" 
+                                onAction="#onRunIngest"
+                                prefHeight="52"
+                                maxWidth="Infinity"
+                                HBox.hgrow="ALWAYS"
+                                style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-background-radius: 12; -fx-background-color: #10b981; -fx-text-fill: white; -fx-border-width: 0; -fx-effect: dropshadow(gaussian, rgba(16, 185, 129, 0.3), 12, 0, 0, 4); -fx-cursor: hand;">
+                            <tooltip><Tooltip text="Nạp và phân tích dữ liệu theo từ khóa và khoảng thời gian"/></tooltip>
+                        </Button>
+                        
+                        <!-- Dashboard Button -->
+                        <Button text="📊 Bảng Điều Khiển" 
+                                onAction="#onOpenLastDashboard"
+                                prefHeight="52"
+                                maxWidth="Infinity"
+                                HBox.hgrow="ALWAYS"
+                                style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-background-radius: 12; -fx-background-color: #d1fae5; -fx-text-fill: #047857; -fx-border-width: 0; -fx-cursor: hand;">
+                            <tooltip><Tooltip text="Xem dashboard phân tích gần nhất"/></tooltip>
+                        </Button>
+                        
+                        <!-- Collector Button -->
+                        <Button text="🔄 Thu Thập Dữ Liệu" 
+                                onAction="#onOpenCollector"
+                                prefHeight="52"
+                                maxWidth="Infinity"
+                                HBox.hgrow="ALWAYS"
+                                style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-background-radius: 12; -fx-background-color: #d1fae5; -fx-text-fill: #047857; -fx-border-width: 0; -fx-cursor: hand;">
+                            <tooltip><Tooltip text="Thu thập dữ liệu mới từ News RSS, YouTube, Reddit"/></tooltip>
+                        </Button>
+                    </HBox>
+                    
+                </VBox>
+            </VBox>
+            
+            <!-- Status Section Below Card -->
+            <VBox spacing="32" alignment="CENTER" style="-fx-padding: 40 0 20 0;">
+                <!-- Status Message -->
+                <VBox spacing="8" alignment="CENTER">
+                    <Label fx:id="statusLabel" 
+                           text="✨ Sẵn sàng phân tích" 
+                           style="-fx-font-size: 16px; -fx-font-weight: 600; -fx-text-fill: #047857;"/>
+                    <Label text="Nhập từ khóa và chọn khoảng thời gian để bắt đầu phân tích" 
+                           style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                </VBox>
+                
+                <!-- Database Info -->
+                <HBox spacing="8" alignment="CENTER" style="-fx-opacity: 0.6;">
+                    <Label text="💾" style="-fx-font-size: 12px;"/>
+                    <Label fx:id="dbLabel" text="Database: ..." style="-fx-font-size: 11px; -fx-text-fill: #6b7280;"/>
+                </HBox>
+            </VBox>
+            
         </VBox>
     </center>
 

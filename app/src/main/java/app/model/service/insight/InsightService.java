@@ -119,14 +119,18 @@ public class InsightService {
 
     private String fetchTask3Csv(String runId, int limit) {
         List<Object> rows = callList(repo, "readReliefCategorySentiment", runId);
+        System.out.println("[InsightService] fetchTask3Csv readReliefCategorySentiment returned " + rows.size() + " rows");
         if (rows.isEmpty()) return "";
-        return rows.stream().limit(limit).map(r -> {
+        String csv = rows.stream().limit(limit).map(r -> {
             String cat = str(getAny(r, "category","item","tag","label"));
             int pos = parseInt(getAny(r, "pos","positive","posCount"));
             int neg = parseInt(getAny(r, "neg","negative","negCount"));
             int net = parseInt(getAny(r, "net","total","totalScore","score"));
+            System.out.println("[InsightService] Task3 row: " + cat + " pos=" + pos + " neg=" + neg + " net=" + net);
             return "%s,%d,%d,%d".formatted(cat, pos, neg, net);
         }).collect(Collectors.joining("\n"));
+        System.out.println("[InsightService] fetchTask3Csv produced CSV with " + csv.split("\n").length + " lines");
+        return csv;
     }
 
     private String fetchTask4Csv(String runId, LocalDate from, LocalDate to, int limit) {

@@ -1,30 +1,116 @@
-/* Light */
+/* ═══════════════════════════════════════════════════════════════
+   🎨 MODERN DESIGN TOKENS
+   Inspired by: Fluent Design, Material You, iOS Design Guidelines
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Light Theme - Soft & Elegant */
 .root {
-  -color-primary: #2563eb;
-  -on-primary: white;
+  /* Primary Colors - Indigo/Purple Gradient */
+  -color-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -color-primary-solid: #6366f1;
+  -color-primary-light: #818cf8;
+  -color-primary-dark: #4f46e5;
+  -on-primary: #ffffff;
+  
+  /* Surface & Background */
+  -color-bg: #f8fafc;
   -color-surface: #ffffff;
-  -on-surface: #111827;
-  -color-outline: #e5e7eb;
-
-  -radius-xl: 16px;
-  -radius-lg: 12px;
-  -radius-md: 8px;
-  -space-1: 4px; -space-2: 8px; -space-3: 12px; -space-4: 16px; -space-6: 24px; -space-8: 32px;
-
-  -chart-pos: #16a34a;
-  -chart-neg: #dc2626;
-  -chart-neu: #6b7280;
+  -color-surface-elevated: #ffffff;
+  -on-surface: #1e293b;
+  -on-surface-variant: #64748b;
+  
+  /* Accents */
+  -color-accent: #ec4899;
+  -color-success: #10b981;
+  -color-warning: #f59e0b;
+  -color-error: #ef4444;
+  
+  /* Borders & Dividers */
+  -color-outline: #e2e8f0;
+  -color-outline-variant: #cbd5e1;
+  
+  /* Shadows - Soft & Layered */
+  -shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  -shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  -shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  -shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.15);
+  
+  /* Border Radius - Increased for Friendlier Look */
+  -radius-xs: 6px;
+  -radius-sm: 10px;
+  -radius-md: 14px;
+  -radius-lg: 18px;
+  -radius-xl: 24px;
+  -radius-full: 9999px;
+  
+  /* Spacing Scale */
+  -space-1: 4px;
+  -space-2: 8px;
+  -space-3: 12px;
+  -space-4: 16px;
+  -space-5: 20px;
+  -space-6: 24px;
+  -space-8: 32px;
+  -space-10: 40px;
+  -space-12: 48px;
+  
+  /* Typography */
+  -font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'SF Pro Display', sans-serif;
+  -font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'SF Pro Text', sans-serif;
+  -font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  
+  /* Chart Colors - Vibrant & Clear */
+  -chart-pos: #10b981;
+  -chart-neg: #ef4444;
+  -chart-neu: #94a3b8;
+  -chart-1: #8b5cf6;
+  -chart-2: #06b6d4;
+  -chart-3: #f59e0b;
+  -chart-4: #ec4899;
+  -chart-5: #14b8a6;
+  -chart-6: #f97316;
 }
 
-/* Dark */
+/* Dark Theme - Deep & Sophisticated */
 .root:dark {
-  -color-primary: #93c5fd;
-  -on-primary: #0b1020;
-  -color-surface: #0b1020;
-  -on-surface: #e5e7eb;
-  -color-outline: #1f2937;
-
-  -chart-pos: #4ade80;
+  /* Primary Colors */
+  -color-primary: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+  -color-primary-solid: #818cf8;
+  -color-primary-light: #a5b4fc;
+  -color-primary-dark: #6366f1;
+  -on-primary: #0f172a;
+  
+  /* Surface & Background */
+  -color-bg: #0f172a;
+  -color-surface: #1e293b;
+  -color-surface-elevated: #334155;
+  -on-surface: #f1f5f9;
+  -on-surface-variant: #94a3b8;
+  
+  /* Accents */
+  -color-accent: #f472b6;
+  -color-success: #34d399;
+  -color-warning: #fbbf24;
+  -color-error: #f87171;
+  
+  /* Borders & Dividers */
+  -color-outline: #334155;
+  -color-outline-variant: #475569;
+  
+  /* Shadows - Darker & More Dramatic */
+  -shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  -shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  -shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+  -shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.7);
+  
+  /* Chart Colors - Bright on Dark */
+  -chart-pos: #34d399;
   -chart-neg: #f87171;
-  -chart-neu: #9ca3af;
+  -chart-neu: #94a3b8;
+  -chart-1: #a78bfa;
+  -chart-2: #22d3ee;
+  -chart-3: #fbbf24;
+  -chart-4: #f472b6;
+  -chart-5: #2dd4bf;
+  -chart-6: #fb923c;
 }

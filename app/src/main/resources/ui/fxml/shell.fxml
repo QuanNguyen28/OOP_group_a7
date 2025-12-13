@@ -1,30 +1,134 @@
-<BorderPane fx:controller="app.controller.ShellController" xmlns:fx="http://javafx.com/fxml">
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:controller="app.controller.ShellController" 
+            xmlns:fx="http://javafx.com/fxml"
+            xmlns="http://javafx.com/javafx"
+            style="-fx-background-color: -color-bg;">
+  
+  <!-- Modern App Bar -->
   <top>
-    <ToolBar fx:id="topBar" styleClass="appbar">
-      <Label text="OOP • Disaster Analytics" styleClass="appbar-title"/>
-      <Separator />
-      <ComboBox fx:id="runSelector" promptText="Select Run"/>
-      <TextField fx:id="keywordField" promptText="Enter keywords (e.g., yagi, ragasa)" />
-      <Button fx:id="runBtn" text="Run" defaultButton="true"/>
-      <Button fx:id="exportBtn" text="Export"/>
-      <ToggleButton fx:id="themeToggle" text="Dark"/>
-    </ToolBar>
+    <VBox>
+      <ToolBar fx:id="topBar" styleClass="appbar" style="-fx-background-color: -color-surface; -fx-border-color: -color-outline; -fx-border-width: 0 0 2 0; -fx-padding: 12 20;">
+        <HBox spacing="16" alignment="CENTER_LEFT">
+          <!-- App Title -->
+          <HBox spacing="8" alignment="CENTER_LEFT">
+            <Label text="🌐" style="-fx-font-size: 24px;"/>
+            <Label text="OOP • Phân Tích Thảm Họa" 
+                   styleClass="appbar-title" 
+                   style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: -color-primary-solid;"/>
+          </HBox>
+          
+          <Separator orientation="VERTICAL"/>
+          
+          <!-- Run Selector -->
+          <ComboBox fx:id="runSelector" 
+                    promptText="🔍 Chọn lần chạy..."
+                    prefWidth="200"
+                    style="-fx-font-size: 13px;"/>
+          
+          <!-- Keyword Search -->
+          <TextField fx:id="keywordField" 
+                     promptText="💬 Nhập từ khóa (yagi, ragasa...)" 
+                     prefWidth="280"
+                     style="-fx-font-size: 13px;"/>
+          
+          <!-- Action Buttons -->
+          <Button fx:id="runBtn" 
+                  text="▶ Chạy" 
+                  defaultButton="true"
+                  styleClass="primary"
+                  prefHeight="36"
+                  style="-fx-font-size: 13px;"/>
+          
+          <Button fx:id="exportBtn" 
+                  text="📥 Xuất" 
+                  prefHeight="36"
+                  style="-fx-font-size: 13px;"/>
+          
+          <!-- Spacer -->
+          <Pane HBox.hgrow="ALWAYS"/>
+          
+          <!-- Theme Toggle -->
+          <ToggleButton fx:id="themeToggle" 
+                        text="🌙 Tối" 
+                        prefHeight="36"
+                        style="-fx-font-size: 13px; -fx-background-radius: 18px; -fx-border-radius: 18px;"/>
+        </HBox>
+      </ToolBar>
+    </VBox>
   </top>
+  
+  <!-- Modern Sidebar Navigation -->
   <left>
-    <VBox styleClass="nav">
-      <ToggleButton text="Run"    fx:id="navRun" />
-      <ToggleButton text="Dashboard" fx:id="navDash" />
-      <ToggleButton text="Data & Lexicons" fx:id="navData" />
-      <ToggleButton text="Settings" fx:id="navSettings" />
+    <VBox styleClass="nav" 
+          style="-fx-background-color: -color-surface; -fx-border-color: -color-outline; -fx-border-width: 0 1 0 0; -fx-padding: 16 8; -fx-spacing: 8; -fx-pref-width: 180;">
+      
+      <Label text="ĐIỀU HƯỚNG" 
+             styleClass="caption" 
+             style="-fx-padding: 8 12; -fx-opacity: 0.6; -fx-font-weight: 700; -fx-font-size: 11px;"/>
+      
+      <ToggleButton text="▶️  Chạy" 
+                    fx:id="navRun"
+                    maxWidth="Infinity"
+                    style="-fx-background-radius: 8px; -fx-padding: 12; -fx-font-size: 13px; -fx-alignment: CENTER_LEFT;"/>
+      
+      <ToggleButton text="📊  Bảng Điều Khiển" 
+                    fx:id="navDash"
+                    maxWidth="Infinity"
+                    style="-fx-background-radius: 8px; -fx-padding: 12; -fx-font-size: 13px; -fx-alignment: CENTER_LEFT;"/>
+      
+      <ToggleButton text="📁  Dữ Liệu &amp; Từ Điển" 
+                    fx:id="navData"
+                    maxWidth="Infinity"
+                    style="-fx-background-radius: 8px; -fx-padding: 12; -fx-font-size: 13px; -fx-alignment: CENTER_LEFT;"/>
+      
+      <ToggleButton text="⚙️  Cài Đặt" 
+                    fx:id="navSettings"
+                    maxWidth="Infinity"
+                    style="-fx-background-radius: 8px; -fx-padding: 12; -fx-font-size: 13px; -fx-alignment: CENTER_LEFT;"/>
+      
+      <!-- Spacer -->
+      <Pane VBox.vgrow="ALWAYS"/>
+      
+      <!-- Footer Info -->
+      <VBox spacing="4" style="-fx-padding: 12; -fx-background-color: derive(-color-surface, -3%); -fx-background-radius: 8px; -fx-border-radius: 8px;">
+        <Label text="v1.0.0" styleClass="caption" style="-fx-opacity: 0.5;"/>
+        <Label text="© 2025 OOP Team" styleClass="caption" style="-fx-font-size: 10px; -fx-opacity: 0.5;"/>
+      </VBox>
     </VBox>
   </left>
+  
+  <!-- Main Content Area -->
   <center>
-    <StackPane fx:id="contentHost"/>
+    <StackPane fx:id="contentHost" style="-fx-background-color: -color-bg;"/>
   </center>
+  
+  <!-- Modern Status Bar -->
   <bottom>
-    <HBox styleClass="statusbar">
-      <ProgressBar fx:id="progress" prefWidth="200"/>
-      <Label fx:id="statusLabel" text="Ready"/>
+    <HBox styleClass="statusbar" 
+          alignment="CENTER_LEFT" 
+          spacing="16"
+          style="-fx-background-color: -color-surface; -fx-border-color: -color-outline; -fx-border-width: 1 0 0 0; -fx-padding: 8 20;">
+      
+      <Label text="⚡" style="-fx-font-size: 14px;"/>
+      <ProgressBar fx:id="progress" 
+                   prefWidth="180" 
+                   prefHeight="8"
+                   style="-fx-accent: -color-primary-solid;"/>
+      
+      <Label fx:id="statusLabel" 
+             text="✨ Sẵn sàng" 
+             style="-fx-font-size: 12px; -fx-text-fill: -on-surface-variant;"/>
+      
+      <!-- Spacer -->
+      <Pane HBox.hgrow="ALWAYS"/>
+      
+      <!-- System Info -->
+      <Label text="🖥️ JavaFX 21" 
+             styleClass="caption" 
+             style="-fx-opacity: 0.5; -fx-font-size: 11px;"/>
     </HBox>
   </bottom>
 </BorderPane>

@@ -7,130 +7,227 @@
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="app.controller.DashboardController">
 
+    <!-- Modern Header with Gradient Background -->
     <top>
-        <VBox spacing="8" styleClass="page">
-            <HBox spacing="12">
-                <Button fx:id="btnExport"  text="Export CSV" styleClass="toolbar-btn"/>
-                <Separator/>
-                <Label text="Date Range:"/>
-                <DatePicker fx:id="dpFrom" promptText="From (yyyy-MM-dd)"/>
-                <DatePicker fx:id="dpTo" promptText="To (yyyy-MM-dd)"/>
+        <VBox spacing="16" style="-fx-background-color: linear-gradient(to right, derive(-color-primary-solid, 95%), derive(-color-accent, 95%)); -fx-padding: 24 32;">
+            <!-- Title Section -->
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <Button fx:id="backBtn" 
+                        text="← Quay Lại" 
+                        onAction="#onGoBack"
+                        prefHeight="40"
+                        prefWidth="140"
+                        style="-fx-font-size: 14px; -fx-font-weight: 600; -fx-padding: 8 16; -fx-background-radius: 12; -fx-border-radius: 12; -fx-background-color: #f0f4ff; -fx-text-fill: #4f46e5; -fx-border-color: #c7d2fe; -fx-border-width: 1.5;"/>
+                <Label text="📊" style="-fx-font-size: 28px;"/>
+                <VBox>
+                    <Label text="Bảng Điều Khiển Phân Tích" styleClass="heading-2" style="-fx-text-fill: -color-primary-solid;"/>
+                    <Label fx:id="statusLabel" text="✨ Sẵn sàng" styleClass="subtitle"/>
+                </VBox>
             </HBox>
-            <Label fx:id="statusLabel" text="Ready"/>
+            
+            <!-- Controls Card -->
+            <HBox spacing="16" alignment="CENTER_LEFT" styleClass="card" style="-fx-padding: 16 20;">
+                <Button fx:id="btnExport" text="📥 Xuất CSV" styleClass="toolbar-btn" prefHeight="36"/>
+                <Separator orientation="VERTICAL"/>
+                
+                <Label text="📅 Phạm Vi Thời Gian:" style="-fx-font-weight: 600;"/>
+                <DatePicker fx:id="dpFrom" promptText="Từ ngày" prefHeight="36" prefWidth="150"/>
+                <Label text="→" style="-fx-font-size: 16px;"/>
+                <DatePicker fx:id="dpTo" promptText="Đến ngày" prefHeight="36" prefWidth="150"/>
+            </HBox>
         </VBox>
     </top>
 
     <center>
         <TabPane tabClosingPolicy="UNAVAILABLE" styleClass="primary-tabs">
             <tabs>
-                <!-- (1) Sentiment -->
-                <Tab text="Sentiment">
+                <!-- (1) Sentiment Analysis -->
+                <Tab text="😊  Cảm Xúc">
                     <content>
-                        <VBox spacing="10" styleClass="page">
-                            <Label fx:id="overallSubtitle" text="Loading..."/>
-                            <StackPane styleClass="card">
-                                <LineChart fx:id="overallChart">
-                                    <xAxis><CategoryAxis label="Day"/></xAxis>
-                                    <yAxis><NumberAxis label="Posts"/></yAxis>
-                                </LineChart>
-                            </StackPane>
+                        <ScrollPane fitToWidth="true" style="-fx-background: -color-bg; -fx-background-color: -color-bg;">
+                            <VBox spacing="20" styleClass="page" style="-fx-padding: 24;">
+                                <!-- Subtitle -->
+                                <HBox alignment="CENTER_LEFT" spacing="8">
+                                    <Label text="📈" style="-fx-font-size: 20px;"/>
+                                    <Label fx:id="overallSubtitle" text="Phân tích xu hướng cảm xúc..." styleClass="heading-3"/>
+                                </HBox>
+                                
+                                <!-- Chart Card -->
+                                <StackPane styleClass="card">
+                                    <LineChart fx:id="overallChart">
+                                        <xAxis><CategoryAxis label="Ngày" style="-fx-font-weight: 600;"/></xAxis>
+                                        <yAxis><NumberAxis label="Số Bài Viết" style="-fx-font-weight: 600;"/></yAxis>
+                                    </LineChart>
+                                </StackPane>
 
-                            <TitledPane text="Insight (LLM)">
-                                <VBox spacing="8" style="-fx-padding: 8;">
-                                    <HBox spacing="8">
-                                        <Button fx:id="btnSummarizeOverall" text="Summarize Sentiment"/>
-                                        <Label text="(tự động dùng from/to nếu đặt)"/>
-                                    </HBox>
-                                    <TextArea fx:id="txtOverallSummary" prefRowCount="6" wrapText="true"/>
-                                </VBox>
-                            </TitledPane>
-                        </VBox>
+                                <!-- AI Analysis Section -->
+                                <TitledPane text="🤖  Phân Tích Bằng AI (LLM)" expanded="false">
+                                    <VBox spacing="12" style="-fx-padding: 16;">
+                                        <HBox spacing="12" alignment="CENTER_LEFT">
+                                            <Button fx:id="btnSummarizeOverall" 
+                                                    text="✨ Tạo Báo Cáo Cảm Xúc" 
+                                                    styleClass="primary"
+                                                    prefHeight="40"/>
+                                            <Label text="Tự động phân tích dựa trên khoảng thời gian đã chọn" 
+                                                   styleClass="caption"/>
+                                        </HBox>
+                                        <TextArea fx:id="txtOverallSummary" 
+                                                  prefRowCount="8" 
+                                                  wrapText="true"
+                                                  promptText="Báo cáo AI sẽ hiển thị ở đây..."/>
+                                    </VBox>
+                                </TitledPane>
+                            </VBox>
+                        </ScrollPane>
                     </content>
                 </Tab>
 
-                <!-- (2) Damage -->
-                <Tab text="Damage">
+                <!-- (2) Damage Assessment -->
+                <Tab text="⚠️  Thiệt Hại">
                     <content>
-                        <VBox spacing="10" styleClass="page">
-                            <HBox spacing="8">
-                                <Label text="View:"/>
-                                <ComboBox fx:id="damageView" prefWidth="180"/>
-                            </HBox>
-                            <StackPane styleClass="card">
-                                <BarChart fx:id="damageChart">
-                                    <xAxis><CategoryAxis label="Type/Day"/></xAxis>
-                                    <yAxis><NumberAxis label="Count"/></yAxis>
-                                </BarChart>
-                            </StackPane>
+                        <ScrollPane fitToWidth="true" style="-fx-background: -color-bg; -fx-background-color: -color-bg;">
+                            <VBox spacing="20" styleClass="page" style="-fx-padding: 24;">
+                                <!-- Controls -->
+                                
+                                <!-- Chart Card -->
+                                <StackPane styleClass="card">
+                                    <BarChart fx:id="damageChart">
+                                        <xAxis><CategoryAxis label="Loại Thiệt Hại / Ngày" style="-fx-font-weight: 600;"/></xAxis>
+                                        <yAxis><NumberAxis label="Số Lượng" style="-fx-font-weight: 600;"/></yAxis>
+                                    </BarChart>
+                                </StackPane>
 
-                            <TitledPane text="Insight (LLM)">
-                                <VBox spacing="8" style="-fx-padding: 8;">
-                                    <Button fx:id="btnSummarizeDamage" text="Summarize Damage"/>
-                                    <TextArea fx:id="txtDamageSummary" prefRowCount="6" wrapText="true"/>
-                                </VBox>
-                            </TitledPane>
-                        </VBox>
+                                <!-- AI Insights -->
+                                <TitledPane text="🤖  Đánh Giá Bằng AI" expanded="false">
+                                    <VBox spacing="12" style="-fx-padding: 16;">
+                                        <Button fx:id="btnSummarizeDamage" 
+                                                text="✨ Tạo Báo Cáo Thiệt Hại" 
+                                                styleClass="primary"
+                                                prefHeight="40"/>
+                                        <TextArea fx:id="txtDamageSummary" 
+                                                  prefRowCount="8" 
+                                                  wrapText="true"
+                                                  promptText="Phân tích chi tiết về thiệt hại..."/>
+                                    </VBox>
+                                </TitledPane>
+                            </VBox>
+                        </ScrollPane>
                     </content>
                 </Tab>
 
-                <!-- (3) Relief -->
-                <Tab text="Relief">
+                <!-- (3) Relief Distribution -->
+                <Tab text="🎁  Cứu Trợ">
                     <content>
-                        <VBox spacing="10" styleClass="page">
-                            <StackPane styleClass="card">
-                                <PieChart fx:id="reliefPie"/>
-                            </StackPane>
+                        <ScrollPane fitToWidth="true" style="-fx-background: -color-bg; -fx-background-color: -color-bg;">
+                            <VBox spacing="20" styleClass="page" style="-fx-padding: 24;">
+                                <!-- Header -->
+                                <HBox alignment="CENTER_LEFT" spacing="8">
+                                    <Label text="📦" style="-fx-font-size: 20px;"/>
+                                    <Label text="Phân Bổ Hàng Cứu Trợ" styleClass="heading-3"/>
+                                </HBox>
+                                
+                                <!-- Chart Card -->
+                                <StackPane styleClass="card" style="-fx-padding: 32;">
+                                    <PieChart fx:id="reliefPie"/>
+                                </StackPane>
 
-                            <TitledPane text="Insight (LLM)">
-                                <VBox spacing="8" style="-fx-padding: 8;">
-                                    <Button fx:id="btnSummarizeRelief" text="Summarize Relief"/>
-                                    <TextArea fx:id="txtReliefSummary" prefRowCount="6" wrapText="true"/>
-                                </VBox>
-                            </TitledPane>
-                        </VBox>
+                                <!-- AI Analysis -->
+                                <TitledPane text="🤖  Insight từ AI" expanded="false">
+                                    <VBox spacing="12" style="-fx-padding: 16;">
+                                        <Button fx:id="btnSummarizeRelief" 
+                                                text="✨ Phân Tích Xu Hướng Cứu Trợ" 
+                                                styleClass="primary"
+                                                prefHeight="40"/>
+                                        <TextArea fx:id="txtReliefSummary" 
+                                                  prefRowCount="8" 
+                                                  wrapText="true"
+                                                  promptText="Các insight về hàng cứu trợ..."/>
+                                    </VBox>
+                                </TitledPane>
+                            </VBox>
+                        </ScrollPane>
                     </content>
                 </Tab>
 
-                <!-- Task 3 -->
-                <Tab text="Task 3: Satisfaction">
+                <!-- Task 3 - Satisfaction -->
+                <Tab text="💯  Hài Lòng">
                     <content>
-                        <VBox spacing="10" style="-fx-padding: 10;">
-                            <Label text="Mức độ hài lòng theo từng loại hàng cứu trợ" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
-                            <StackedBarChart fx:id="task3Chart">
-                                <xAxis><CategoryAxis label="Loại hàng cứu trợ"/></xAxis>
-                                <yAxis><NumberAxis label="Số bài viết"/></yAxis>
-                            </StackedBarChart>
+                        <ScrollPane fitToWidth="true" style="-fx-background: -color-bg; -fx-background-color: -color-bg;">
+                            <VBox spacing="20" styleClass="page" style="-fx-padding: 24;">
+                                <!-- Header -->
+                                <HBox alignment="CENTER_LEFT" spacing="8">
+                                    <Label text="⭐" style="-fx-font-size: 20px;"/>
+                                    <Label text="Mức Độ Hài Lòng Theo Loại Hàng Cứu Trợ" styleClass="heading-3"/>
+                                </HBox>
+                                
+                                <!-- Chart Card -->
+                                <StackPane styleClass="card">
+                                    <StackedBarChart fx:id="task3Chart">
+                                        <xAxis><CategoryAxis label="Loại Hàng Cứu Trợ" style="-fx-font-weight: 600;"/></xAxis>
+                                        <yAxis><NumberAxis label="Số Bài Viết" style="-fx-font-weight: 600;"/></yAxis>
+                                    </StackedBarChart>
+                                </StackPane>
 
-                            <TitledPane text="Insight (LLM)">
-                                <VBox spacing="8" style="-fx-padding: 8;">
-                                    <Button fx:id="btnSummarizeTask3" text="Summarize Task 3"/>
-                                    <TextArea fx:id="txtTask3Summary" prefRowCount="6" wrapText="true"/>
-                                </VBox>
-                            </TitledPane>
-                        </VBox>
+                                <!-- AI Summary -->
+                                <TitledPane text="🤖  Phân Tích Mức Độ Hài Lòng" expanded="false">
+                                    <VBox spacing="12" style="-fx-padding: 16;">
+                                        <Button fx:id="btnSummarizeTask3" 
+                                                text="✨ Tạo Báo Cáo Hài Lòng" 
+                                                styleClass="primary"
+                                                prefHeight="40"/>
+                                        <TextArea fx:id="txtTask3Summary" 
+                                                  prefRowCount="8" 
+                                                  wrapText="true"
+                                                  promptText="Đánh giá mức độ hài lòng..."/>
+                                    </VBox>
+                                </TitledPane>
+                            </VBox>
+                        </ScrollPane>
                     </content>
                 </Tab>
 
-                <!-- Task 4 -->
-                <Tab text="Task 4: Trends (per Category)">
+                <!-- Task 4 - Trends -->
+                <Tab text="📈  Xu Hướng">
                     <content>
-                        <VBox spacing="10" style="-fx-padding: 10;">
-                            <Label text="Diễn biến tâm lý theo thời gian (trung bình)" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
-                            <LineChart fx:id="task4Chart">
-                                <xAxis><CategoryAxis label="Ngày"/></xAxis>
-                                <yAxis><NumberAxis label="Điểm (-1..1)" lowerBound="-1" upperBound="1" autoRanging="false"/></yAxis>
-                            </LineChart>
+                        <ScrollPane fitToWidth="true" style="-fx-background: -color-bg; -fx-background-color: -color-bg;">
+                            <VBox spacing="20" styleClass="page" style="-fx-padding: 24;">
+                                <!-- Header -->
+                                <HBox alignment="CENTER_LEFT" spacing="8">
+                                    <Label text="📉" style="-fx-font-size: 20px;"/>
+                                    <Label text="Diễn Biến Tâm Lý Theo Thời Gian" styleClass="heading-3"/>
+                                </HBox>
+                                
+                                <!-- Chart Card -->
+                                <StackPane styleClass="card">
+                                    <LineChart fx:id="task4Chart">
+                                        <xAxis><CategoryAxis label="Ngày" style="-fx-font-weight: 600;"/></xAxis>
+                                        <yAxis><NumberAxis label="Điểm Cảm Xúc (-1 → +1)" 
+                                                          lowerBound="-1" 
+                                                          upperBound="1" 
+                                                          autoRanging="false"
+                                                          style="-fx-font-weight: 600;"/></yAxis>
+                                    </LineChart>
+                                </StackPane>
 
-                            <TitledPane text="Insight (LLM)">
-                                <VBox spacing="8" style="-fx-padding: 8;">
-                                    <HBox spacing="8">
-                                        <Button fx:id="btnSummarizeTask4" text="Summarize Task 4 (use from/to)"/>
-                                        <Label text="Sẽ dùng khoảng thời gian đang chọn ở header"/>
-                                    </HBox>
-                                    <TextArea fx:id="txtTask4Summary" prefRowCount="6" wrapText="true"/>
-                                </VBox>
-                            </TitledPane>
-                        </VBox>
+                                <!-- AI Analysis -->
+                                <TitledPane text="🤖  Phân Tích Xu Hướng" expanded="false">
+                                    <VBox spacing="12" style="-fx-padding: 16;">
+                                        <HBox spacing="12" alignment="CENTER_LEFT">
+                                            <Button fx:id="btnSummarizeTask4" 
+                                                    text="✨ Tạo Báo Cáo Xu Hướng" 
+                                                    styleClass="primary"
+                                                    prefHeight="40"/>
+                                            <Label text="Sử dụng khoảng thời gian đã chọn ở header" 
+                                                   styleClass="caption"/>
+                                        </HBox>
+                                        <TextArea fx:id="txtTask4Summary" 
+                                                  prefRowCount="8" 
+                                                  wrapText="true"
+                                                  promptText="Insight về xu hướng thay đổi..."/>
+                                    </VBox>
+                                </TitledPane>
+                            </VBox>
+                        </ScrollPane>
                     </content>
                 </Tab>
             </tabs>

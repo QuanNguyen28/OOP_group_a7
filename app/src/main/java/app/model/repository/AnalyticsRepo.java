@@ -171,6 +171,13 @@ public class AnalyticsRepo {
     public record ReliefCategorySentiment(String category, int pos, int neg, int net) {}
 
     public List<ReliefCategorySentiment> readReliefCategorySentiment(String runId) {
+        // Chiến lược 0: relief_sentiment table (pre-aggregated by category)
+        final String qSentiment =
+            "SELECT item AS category, SUM(pos) AS pos, SUM(neg) AS neg, SUM(pos - neg) AS net FROM relief_sentiment " +
+            "WHERE run_id = ? GROUP BY item ORDER BY item";
+        var fromSentiment = tryQueryReliefCategory(runId, qSentiment);
+        if (!fromSentiment.isEmpty()) return fromSentiment;
+
         // Chiến lược 1: nếu đã có relief_daily thì gộp theo category
         final String qDaily =
             "SELECT category, SUM(pos), SUM(neg), SUM(net) FROM relief_daily " +
