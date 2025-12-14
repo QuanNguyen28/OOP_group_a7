@@ -45,7 +45,7 @@ public class RunController {
             return;
         }
 
-        // Lấy khoảng thời gian từ UI (nếu có)
+        // Lấy khoảng thời gian từ UI
         final java.time.Instant fFrom;
         final java.time.Instant fTo;
         java.time.Instant tmpFrom = null, tmpTo = null;
@@ -97,7 +97,6 @@ public class RunController {
     }
 
     private void openDashboard(PipelineService pipeline, String runId) {
-        // Open Dashboard in a new window
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/fxml/dashboard.fxml"));
             Parent root = loader.load();
@@ -112,10 +111,8 @@ public class RunController {
                 ctrl.loadData();
             }
 
-            // Open Dashboard in a new window instead of replacing the current one
             Stage st = new Stage();
             
-            // Set the Run window as owner so Dashboard appears on top
             javafx.stage.Window w = runBtn != null && runBtn.getScene() != null ? runBtn.getScene().getWindow() : null;
             if (w instanceof Stage) {
                 st.initOwner((Stage) w);

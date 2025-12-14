@@ -17,10 +17,6 @@ public class AnalyticsRepo {
 
     public AnalyticsRepo(SQLite db){ this.db = db; }
 
-    /* =========================
-       0) API cũ – giữ nguyên
-       ========================= */
-
     public int saveOverallSentiment(String runId, List<OverallSentimentRow> rows) {
         final String sql = "INSERT OR REPLACE INTO overall_sentiment(run_id,bucket_start,pos,neg,neu) VALUES(?,?,?,?,?)";
         try (var con = db.connect(); PreparedStatement ps = con.prepareStatement(sql)) {
@@ -122,10 +118,6 @@ public class AnalyticsRepo {
 
     public static record TagCount(String tag, int cnt) {}
 
-    /* ===========================================
-       1) API “LLM-ready” – Overall (fallback OK)
-       =========================================== */
-
     public record OverallRow(LocalDate day, int pos, int neg, int neu) {}
 
     public List<OverallRow> readOverallRows(String runId) {
@@ -164,14 +156,9 @@ public class AnalyticsRepo {
         return out;
     }
 
-    /* =========================================================
-       2) API “LLM-ready” – Task 3 (sentiment theo nhóm cứu trợ)
-       ========================================================= */
-
     public record ReliefCategorySentiment(String category, int pos, int neg, int net) {}
 
     public List<ReliefCategorySentiment> readReliefCategorySentiment(String runId) {
-        // Chiến lược 0: relief_sentiment table (pre-aggregated by category)
         final String qSentiment =
             "SELECT item AS category, SUM(pos) AS pos, SUM(neg) AS neg, SUM(pos - neg) AS net FROM relief_sentiment " +
             "WHERE run_id = ? GROUP BY item ORDER BY item";
@@ -213,7 +200,6 @@ public class AnalyticsRepo {
         if (!direct.isEmpty()) return direct;
 
         // Chiến lược 4: nếu không join được thì suy giảm – đếm theo relief_items (không có sentiment)
-        // để tránh “Không có dữ liệu…”, vẫn trả về skeleton cho LLM (pos=neg=net=0).
         var counts = readReliefCounts(runId);
         if (!counts.isEmpty()) {
             List<ReliefCategorySentiment> out = new ArrayList<>();
@@ -237,14 +223,9 @@ public class AnalyticsRepo {
         return out;
     }
 
-    /* =====================================================================
-       3) API “LLM-ready” – Task 4 (theo thời gian cho từng nhóm cứu trợ)
-       ===================================================================== */
-
     public record ReliefDailyRow(LocalDate day, String category, int pos, int neg, int net) {}
 
     public List<ReliefDailyRow> readReliefDaily(String runId) {
-        // First try: relief_sentiment_daily table (pre-aggregated)
         final String qSentimentDaily =
             "SELECT bucket_start AS date, item AS category, pos, neg, (pos - neg) AS net FROM relief_sentiment_daily " +
             "WHERE run_id = ? ORDER BY bucket_start, item";
@@ -257,7 +238,6 @@ public class AnalyticsRepo {
         var byDaily = tryQueryReliefDaily(runId, qDaily, null, null);
         if (!byDaily.isEmpty()) return byDaily;
 
-        // Fallback: tính từ join sentiments × posts × relief_items theo ngày
         final String qJoinViaPosts =
             "SELECT substr(p.created_at,1,10) AS d, ri.item AS category, " +
             "SUM(CASE WHEN s.label='pos' THEN 1 ELSE 0 END) AS pos, " +
@@ -341,17 +321,10 @@ public class AnalyticsRepo {
         return out;
     }
 
-    /* =========================
-       4) Tiện ích nội bộ
-       ========================= */
-
     public static Instant truncateToDayUTC(Instant ts){
         return ZonedDateTime.ofInstant(ts, ZoneOffset.UTC).toLocalDate().atStartOfDay().toInstant(ZoneOffset.UTC);
     }
 
-    /* =====
-       Bonus: tổng hợp nhanh Task3 từ Task4 (nếu cần)
-       ===== */
     public List<ReliefCategorySentiment> aggregateTask3FromTask4(List<ReliefDailyRow> rows) {
         Map<String, int[]> acc = new LinkedHashMap<>();
         for (var r : rows) {

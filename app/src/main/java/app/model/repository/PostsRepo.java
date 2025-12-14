@@ -15,11 +15,10 @@ public class PostsRepo {
     public int saveBatch(List<CleanPost> rows){
         String sql = "INSERT OR REPLACE INTO posts(id,platform,text,lang,ts,geo,run_id) VALUES(?,?,?,?,?,?,?)";
         
-        // QUAN TRỌNG: Lấy connection ra ngoài try(...)
         var con = db.connect(); 
         
         try {
-            con.setAutoCommit(false); // Bắt đầu transaction
+            con.setAutoCommit(false); 
 
             try (PreparedStatement ps = con.prepareStatement(sql)) {
                 int n = 0;
@@ -37,11 +36,11 @@ public class PostsRepo {
                 ps.executeBatch();
             }
             
-            con.commit();            // Commit
-            con.setAutoCommit(true); // Reset về auto-commit
+            con.commit();      
+            con.setAutoCommit(true); 
             return rows.size();
         } catch (Exception e) {
-            try { con.rollback(); } catch (Exception ex) {} // Rollback nếu lỗi
+            try { con.rollback(); } catch (Exception ex) {} 
             throw new RuntimeException(e);
         }
     }

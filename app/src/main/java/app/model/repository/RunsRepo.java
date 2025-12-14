@@ -24,10 +24,8 @@ public class RunsRepo {
     public void createRun(String runId) {
         String sql = "INSERT INTO runs(id, ts) VALUES(?, ?)";
         
-        // QUAN TRỌNG: Lấy connection ra ngoài try(...)
         var con = db.connect();
         
-        // Chỉ để PreparedStatement trong try(...)
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, runId);
             ps.setString(2, java.time.Instant.now().toString());

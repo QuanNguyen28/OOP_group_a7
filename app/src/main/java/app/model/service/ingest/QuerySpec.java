@@ -13,7 +13,6 @@ public final class QuerySpec {
     private final Instant to;
     private final boolean allDatasets;
 
-    /* ===== Factory methods (tương thích PipelineService) ===== */
 
     public static QuerySpec ofKeywords(Collection<String> keys) {
         return new QuerySpec(keys, null, null, true);
@@ -23,13 +22,11 @@ public final class QuerySpec {
         return ofKeywords(keys);
     }
 
-    /* ===== Ctor tương thích reflection: new QuerySpec(Collection) ===== */
 
     public QuerySpec(Collection<String> keys) {
         this(keys, null, null, true);
     }
 
-    /* ===== Ctor đầy đủ (nội bộ) ===== */
 
     private QuerySpec(Collection<String> keys, Instant from, Instant to, boolean allDatasets) {
         this.keywords = toSet(keys);
@@ -51,14 +48,12 @@ public final class QuerySpec {
         return out;
     }
 
-    /* ===== Getters để FileConnector/SocialConnector dùng ===== */
 
     public Set<String> keywords() { return keywords; }
     public Optional<Instant> from() { return Optional.ofNullable(from); }
     public Optional<Instant> to()   { return Optional.ofNullable(to); }
     public boolean allDatasets()    { return allDatasets; }
 
-    /* ===== Builder-like helpers (không bắt buộc) ===== */
 
     public QuerySpec withWindow(Instant newFrom, Instant newTo) {
         return new QuerySpec(this.keywords, newFrom, newTo, this.allDatasets);

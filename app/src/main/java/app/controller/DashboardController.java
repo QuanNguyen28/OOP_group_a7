@@ -59,7 +59,6 @@ public class DashboardController {
     private AnalyticsRepo analyticsRepo;
     private InsightService insights;
     private final LocalNlpModel nlpModel = new LocalNlpModel();
-    // Store initial range from RunController
     private LocalDate initialFromDate = null;
     private LocalDate initialToDate = null;
 
@@ -79,7 +78,6 @@ public class DashboardController {
 
     @FXML
     private void onGoBack() {
-        // Close the Dashboard window to return to the Run screen
         if (backBtn != null && backBtn.getScene() != null && backBtn.getScene().getWindow() != null) {
             backBtn.getScene().getWindow().hide();
         }
@@ -106,7 +104,6 @@ public class DashboardController {
             this.insights = null;
         }
         wireSummaryButtons();
-        // Apply initial range BEFORE loading any charts
         if (dpFrom != null && dpTo != null) {
             if (initialFromDate != null) dpFrom.setValue(initialFromDate);
             if (initialToDate != null) dpTo.setValue(initialToDate);
